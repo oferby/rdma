@@ -239,30 +239,31 @@ private:
 	
 	static void setup_context(app_context *app_ctx) {
 
-        ibv_device   **dev_list;
+        ibv_device   **dev_list, **tmp_dev_list;
         ibv_device   *ib_dev;
         int status;
 
 
         dev_list = ibv_get_device_list(NULL);
-
+       
         if (!dev_list) {
             perror("error getting IB device list");
             exit(EXIT_FAILURE);
         }
-
+        
         ib_dev = *dev_list;
         if (!ib_dev) {
             perror("device list empty");
             exit(EXIT_FAILURE);
         }
-
+        
+        tmp_dev_list = dev_list;
         while (1)
         {
             if (strcmp(ib_dev->name,"rxe0") == 0)
                 break;
-            dev_list++;
-            ib_dev = *dev_list;
+            tmp_dev_list++;
+            ib_dev = *tmp_dev_list;
         }
         
         printf("using dev name: %s\n", ib_dev->name);

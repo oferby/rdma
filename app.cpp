@@ -6,7 +6,6 @@ int main(int argc, char* argv[]) {
     
     bool initiator = false;
     bool sent = false;
-    int cycles = 0;
 
     ConnectionServer conn_server;    
     RdmaHandler rdmaHandler;
@@ -27,10 +26,6 @@ int main(int argc, char* argv[]) {
         conn_server.handle_events();
         rdmaHandler.poll_complition();
 
-        if (initiator & cycles < 101 ) {
-            ++cycles;
-        }
-
         if (initiator & !sent & conn_server.get_app_dest() != nullptr ) {
             
             puts("sending SR.");
@@ -43,6 +38,5 @@ int main(int argc, char* argv[]) {
         }
 
     }
-        
 
 }

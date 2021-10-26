@@ -24,8 +24,8 @@ private:
 
     RdmaHandler *rdmaHandler;
 
-    map <uint32_t, neighbor> neighbor_map;
-    set <uint32_t> pending_hello;
+    std::map <uint32_t, neighbor> neighbor_map;
+    std::set <uint32_t> pending_hello;
 
     int nfds, epollfd, status, sd;
     struct epoll_event ev, events[MAX_EVENTS];
@@ -263,13 +263,33 @@ public:
 
 
 
-    neighbor* get_app_dest() {
-        //  sockaddr_in *dest_addr
-        // return neighbor_map[dest_addr->sin_addr.s_addr];
+    neighbor* get_app_dest(const char *addr) {
+         
+        // in_addr *dest_addr = new in_addr();
 
-        return &(neighbor_map.begin()->second);
+        // inet_aton(addr, dest_addr);
+        
+        // if (neighbor_map[dest_addr->s_addr].addr == nullptr)
+        //     return nullptr;
+        
+        // return &neighbor_map[dest_addr->s_addr];
 
+
+        if(neighbor_map.begin()->second.addr == nullptr)
+            return nullptr;
+
+        return &neighbor_map.begin()->second;
 
     }
+
+    neighbor* get_app_dest() {
+         
+        if(neighbor_map.begin()->second.addr == nullptr)
+            return nullptr;
+
+        return &neighbor_map.begin()->second;
+
+    }
+
 
 };

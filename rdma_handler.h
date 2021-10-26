@@ -257,6 +257,14 @@ private:
             exit(EXIT_FAILURE);
         }
 
+        while (1)
+        {
+            if (strcmp(ib_dev->name,"rxe0") == 0)
+                break;
+            dev_list++;
+            ib_dev = *dev_list;
+        }
+        
         printf("using dev name: %s\n", ib_dev->name);
 
         app_ctx->ctx = ibv_open_device(ib_dev);

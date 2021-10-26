@@ -27,14 +27,11 @@ int main(int argc, char* argv[]) {
         conn_server.handle_events();
         rdmaHandler.poll_complition();
 
-
-
-
-        if (initiator & cycles < 11 ) {
+        if (initiator & cycles < 101 ) {
             ++cycles;
         }
 
-        if (initiator & !sent & ( cycles > 10) ) {
+        if (initiator & !sent & conn_server.get_app_dest() != nullptr ) {
             
             puts("sending SR.");
             neighbor *n = conn_server.get_app_dest();

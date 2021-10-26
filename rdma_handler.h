@@ -41,7 +41,7 @@ struct app_context {
 };
 
 struct app_dest {
-	int lid;
+	uint16_t lid;
 	int qpn;
 	int psn;
 	union ibv_gid *gid;
@@ -93,19 +93,21 @@ private:
 	static void createQueuePair(app_context *app_ctx) {
 
 		struct ibv_qp_attr attr;
+		struct ibv_qp_init_attr init_attr = {
+			.send_cq = app_ctx->cq,
+			.recv_cq = app_ctx->cq,
+			.cap     = {
+				.max_send_wr  = MAX_WR,
+				.max_recv_wr  = MAX_WR,
+				.max_send_sge = MAX_SGE,
+				.max_recv_sge = MAX_SGE,
+                
+			},
+			.qp_type = IBV_QPT_UD,
+            .sq_sig_all = 1
+		};
 
-        ibv_qp_init_attr *init_attr = (ibv_qp_init_attr*) malloc(sizeof init_attr);
-        init_attr->send_cq = app_ctx->cq;
-        init_attr->recv_cq = app_ctx->cq;
-        init_attr->qp_type = IBV_QPT_UC;
-        init_attr->sq_sig_all = 1;
-        init_attr->cap.max_send_wr = MAX_WR;
-        init_attr->cap.max_recv_wr = MAX_WR;
-        init_attr->cap.max_send_sge = MAX_SGE;
-        init_attr->cap.max_recv_sge = MAX_SGE;
-
-
-		app_ctx->qp = ibv_create_qp(app_ctx->pd, init_attr);
+		app_ctx->qp = ibv_create_qp(app_ctx->pd, &init_attr);
 		if (!app_ctx->qp)  {
 			fprintf(stderr, "Couldn't create QP\n");
 			cleanup(app_ctx);
@@ -166,20 +168,21 @@ private:
             sge->length = msg_size;
             sge->lkey = app_ctx->mr->lkey;
 
-            ibv_recv_wr *rec_wr = (ibv_recv_wr*) malloc (sizeof rec_wr);
-            rec_wr->wr_id = app_ctx->wid++;
-            rec_wr->sg_list = sge;
-            rec_wr->num_sge = 1;
+            ibv_recv_wr rec_wr = {
+                .wr_id = app_ctx->wid++,
+                .sg_list = sge,
+                .num_sge = 1, 
+            };
 
             ibv_recv_wr *bad_wr;
 
-            if (ibv_post_recv(app_ctx->qp, rec_wr, &bad_wr)) {
+            if (ibv_post_recv(app_ctx->qp, &rec_wr, &bad_wr)) {
                 perror("error posting RR.");
                 cleanup(app_ctx);
                 exit(EXIT_FAILURE);    
             } 
 
-            app_ctx->sge_map->insert(std::make_pair(rec_wr->wr_id,sge));
+            app_ctx->sge_map->insert(std::make_pair(rec_wr.wr_id,sge));
 
         }
 
@@ -204,31 +207,31 @@ private:
 
 	static void changeQueuePairState(app_context *app_ctx) {
 
-        ibv_qp_attr *attr = (ibv_qp_attr*) malloc (sizeof attr);
-
-		attr->qp_state        = IBV_QPS_INIT;
-        attr->qkey            = QKEY;
-        attr->pkey_index      = 0;
-        attr->port_num        = PORT_NUM;
+		ibv_qp_attr attr = {
+			.qp_state        = IBV_QPS_INIT,
+            .qkey            = QKEY,
+			.pkey_index      = 0,
+			.port_num        = PORT_NUM
+		};
 
         int state = IBV_QP_STATE              |
 				    IBV_QP_PKEY_INDEX         |
 				    IBV_QP_PORT               |
 				    IBV_QP_QKEY;
 
-        do_qp_change(app_ctx->qp, attr, state, (char*) "INIT");
+        do_qp_change(app_ctx->qp, &attr, state, (char*) "INIT");
 
 
         memset(&attr, 0, sizeof(attr));
-        attr->qp_state = ibv_qp_state::IBV_QPS_RTR;
+        attr.qp_state = ibv_qp_state::IBV_QPS_RTR;
 
-        do_qp_change(app_ctx->qp, attr, IBV_QP_STATE, (char*) "RTR");
+        do_qp_change(app_ctx->qp, &attr, IBV_QP_STATE, (char*) "RTR");
 
         memset(&attr, 0, sizeof(attr));
-        attr->qp_state = ibv_qp_state::IBV_QPS_RTS;
-        attr->sq_psn = 0;
+        attr.qp_state = ibv_qp_state::IBV_QPS_RTS;
+        attr.sq_psn = 0;
 
-        do_qp_change(app_ctx->qp, attr, IBV_QP_STATE | IBV_QP_SQ_PSN, (char*) "RTS");
+        do_qp_change(app_ctx->qp, &attr, IBV_QP_STATE | IBV_QP_SQ_PSN, (char*) "RTS");
 
         puts("QP ready.");
 

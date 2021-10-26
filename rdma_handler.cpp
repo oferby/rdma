@@ -89,13 +89,7 @@ void RdmaHandler::create_send_request(const char *data, size_t len, app_dest *de
 
     ibv_send_wr *bad_wr;
 
-    status = ibv_post_send(app_ctx.qp, send_wr, &bad_wr);
-    if (status) {
-        perror("error posting send request");
-        return;
-    }
-
-    puts("send request sent.");
+    // status = ibv_post_send(app_ctx.qp, send_wr, &bad_wr);
 
 }
 

@@ -60,7 +60,7 @@ class RdmaHandler {
 
 private:
 
-    app_context app_ctx {};
+    app_context app_ctx;
     app_dest *local_dest;
     std::map <uint64_t,ibv_sge*> sge_map;
     std::vector<ibv_sge*> available_send_sge_vector;

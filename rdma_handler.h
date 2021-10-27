@@ -155,7 +155,7 @@ private:
             exit(EXIT_FAILURE);
         }
 
-        // uint32_t msg_size = MSG_SIZE + 40;
+        uint32_t msg_size = MSG_SIZE + 40;
 
         // uint64_t mem_addr = (uintptr_t) app_ctx->buf;
 
@@ -197,15 +197,37 @@ private:
 
         //     app_ctx->available_send_sge_vector->push_back(sge);
 
+            uint64_t mem_addr = (uintptr_t) app_ctx->buf;
+
             ibv_sge *sge = (ibv_sge*) calloc(1, sizeof sge);
-            sge->addr = (uintptr_t) app_ctx->buf;
+            sge->addr = mem_addr;
             sge->length = 0;
             sge->lkey = app_ctx->mr->lkey;
 
             app_ctx->available_send_sge_vector->push_back(sge);
 
 
-            printf("send addr: %i\n", sge->addr);
+            mem_addr += msg_size;
+
+            sge = (ibv_sge*) calloc(1, sizeof sge);
+            sge->addr = mem_addr;
+            sge->length = msg_size;
+            sge->lkey = app_ctx->mr->lkey;
+
+            ibv_recv_wr rec_wr = {
+                .wr_id = app_ctx->wid++,
+                .sg_list = sge,
+                .num_sge = 1, 
+            };
+
+            ibv_recv_wr *bad_wr;
+
+            if (ibv_post_recv(app_ctx->qp, &rec_wr, &bad_wr)) {
+                perror("error posting RR.");
+                cleanup(app_ctx);
+                exit(EXIT_FAILURE);    
+            } 
+
 
         // }
         

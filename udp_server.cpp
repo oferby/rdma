@@ -217,7 +217,7 @@ public:
 
     void handle_events() {
 
-        nfds = epoll_wait(epollfd, events, MAX_EVENTS, 10);
+        nfds = epoll_wait(epollfd, events, MAX_EVENTS, 100);
         if (nfds == -1) {
             perror("epoll wait error!");
             exit(EXIT_FAILURE);

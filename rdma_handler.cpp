@@ -26,13 +26,12 @@ RdmaHandler::RdmaHandler() {
         
         int status;
         
-        local_dest = (app_dest*) malloc(sizeof local_dest);
-        memset(local_dest, 0, sizeof local_dest);
+        local_dest = (app_dest*) calloc(1, sizeof local_dest);
         local_dest->lid = app_ctx.portinfo->lid;
         local_dest->qpn = app_ctx.qp->qp_num;
         local_dest->psn = 1;
         
-        local_dest->gid = (ibv_gid*) malloc(sizeof local_dest->gid);
+        local_dest->gid = (ibv_gid*) calloc(1, sizeof local_dest->gid);
 
         status = ibv_query_gid(app_ctx.ctx, IB_PORT, GID_IDX, local_dest->gid);
         if (status == -1) {

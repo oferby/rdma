@@ -60,7 +60,7 @@ class RdmaHandler {
 
 private:
 
-    app_context app_ctx;
+    app_context app_ctx {};
     app_dest *local_dest;
     std::map <uint64_t,ibv_sge*> sge_map;
     std::vector<ibv_sge*> available_send_sge_vector;
@@ -246,7 +246,7 @@ private:
         }
         
         tmp_dev_list = dev_list;
-        while (1)
+        while (tmp_dev_list)
         {
             if (strcmp(ib_dev->name,"rxe0") == 0)
                 break;
@@ -264,13 +264,12 @@ private:
 
         ibv_free_device_list(dev_list);
 
-        ibv_port_attr port_attr;
-        status = ibv_query_port(app_ctx->ctx, IB_PORT, &port_attr);
+        app_ctx->portinfo = (ibv_port_attr*) calloc(1, sizeof app_ctx->portinfo);
+        status = ibv_query_port(app_ctx->ctx, IB_PORT, app_ctx->portinfo);
         if (status == -1) {
             perror("could not get port info");
             exit(EXIT_FAILURE);
         }
-        app_ctx->portinfo = &port_attr;
 
         app_ctx->pd = ibv_alloc_pd(app_ctx->ctx);
 

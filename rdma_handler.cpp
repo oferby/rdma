@@ -62,8 +62,16 @@ void RdmaHandler::poll_complition() {
 
         }
 
-        if( status > 0 && wc.status == ibv_wc_status::IBV_WC_SUCCESS) 
-            handle_wc();
+        if (status > 0) {
+            if(wc.status == ibv_wc_status::IBV_WC_SUCCESS) 
+                handle_wc();
+            else {
+                puts("got error processing WC.");
+                printf("wid: %i, opcode: %i\n", wc.wr_id, wc.opcode);
+            }
+
+        }
+        
 
 }
 
@@ -80,6 +88,10 @@ void RdmaHandler::create_send_request(const char *data, size_t len, app_dest *de
     ibv_sge *sge = available_send_sge_vector.back();
     available_send_sge_vector.pop_back();
 
+    auto p = reinterpret_cast<void*>(sge->addr);
+    memcpy(p, data, len);
+    sge->length = len;
+
     ibv_send_wr *send_wr = new ibv_send_wr();
     send_wr->wr_id = app_ctx.wid++,
     send_wr->sg_list = sge;
@@ -89,7 +101,12 @@ void RdmaHandler::create_send_request(const char *data, size_t len, app_dest *de
 
     ibv_send_wr *bad_wr;
 
-    // status = ibv_post_send(app_ctx.qp, send_wr, &bad_wr);
+    status = ibv_post_send(app_ctx.qp, send_wr, &bad_wr);
+    if(status) {
+        perror("error posting send request");
+    }
+
+    puts("posted send request.");
 
 }
 

@@ -98,6 +98,8 @@ void RdmaHandler::create_send_request(const char *data, size_t len, app_dest *de
     send_wr->num_sge = 1;
     send_wr->opcode = IBV_WR_SEND;
     send_wr->wr.ud.ah = dest->ah;
+    send_wr->wr.ud.remote_qkey = QKEY;
+    send_wr->wr.ud.remote_qpn = dest->qpn;
 
     ibv_send_wr *bad_wr;
 

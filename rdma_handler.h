@@ -157,79 +157,38 @@ private:
 
         uint32_t msg_size = MSG_SIZE + 40;
 
-        // uint64_t mem_addr = (uintptr_t) app_ctx->buf;
+    
+        uint64_t mem_addr = (uintptr_t) app_ctx->buf;
 
-        // for (int i = 0; i < MAX_WR; i++) {
-                
-        //     mem_addr += msg_size;
+        ibv_sge *sge = (ibv_sge*) calloc(1, sizeof sge);
+        sge->addr = mem_addr;
+        sge->length = 0;
+        sge->lkey = app_ctx->mr->lkey;
 
-        //     ibv_sge *sge = (ibv_sge*) malloc(sizeof sge);
-        //     sge->addr = mem_addr;
-        //     sge->length = msg_size;
-        //     sge->lkey = app_ctx->mr->lkey;
-
-        //     ibv_recv_wr rec_wr = {
-        //         .wr_id = app_ctx->wid++,
-        //         .sg_list = sge,
-        //         .num_sge = 1, 
-        //     };
-
-        //     ibv_recv_wr *bad_wr;
-
-        //     if (ibv_post_recv(app_ctx->qp, &rec_wr, &bad_wr)) {
-        //         perror("error posting RR.");
-        //         cleanup(app_ctx);
-        //         exit(EXIT_FAILURE);    
-        //     } 
-
-        //     app_ctx->sge_map->insert(std::make_pair(rec_wr.wr_id,sge));
-
-        // }
-
-        // // for (int i = 0; i < MAX_WR; i++) {
-                
-        //     mem_addr += msg_size;
-
-        //     ibv_sge *sge = (ibv_sge*) calloc(1, sizeof sge);
-        //     sge->addr = mem_addr;
-        //     sge->length = msg_size;
-        //     sge->lkey = app_ctx->mr->lkey;
-
-        //     app_ctx->available_send_sge_vector->push_back(sge);
-
-            uint64_t mem_addr = (uintptr_t) app_ctx->buf;
-
-            ibv_sge *sge = (ibv_sge*) calloc(1, sizeof sge);
-            sge->addr = mem_addr;
-            sge->length = 0;
-            sge->lkey = app_ctx->mr->lkey;
-
-            app_ctx->available_send_sge_vector->push_back(sge);
+        app_ctx->available_send_sge_vector->push_back(sge);
 
 
-            mem_addr += msg_size;
+        mem_addr += msg_size;
 
-            sge = (ibv_sge*) calloc(1, sizeof sge);
-            sge->addr = mem_addr;
-            sge->length = msg_size;
-            sge->lkey = app_ctx->mr->lkey;
+        sge = (ibv_sge*) calloc(1, sizeof sge);
+        sge->addr = mem_addr;
+        sge->length = msg_size;
+        sge->lkey = app_ctx->mr->lkey;
 
-            ibv_recv_wr rec_wr = {
-                .wr_id = app_ctx->wid++,
-                .sg_list = sge,
-                .num_sge = 1, 
-            };
+        ibv_recv_wr rec_wr = {
+            .wr_id = app_ctx->wid++,
+            .sg_list = sge,
+            .num_sge = 1, 
+        };
 
-            ibv_recv_wr *bad_wr;
+        ibv_recv_wr *bad_wr;
 
-            if (ibv_post_recv(app_ctx->qp, &rec_wr, &bad_wr)) {
-                perror("error posting RR.");
-                cleanup(app_ctx);
-                exit(EXIT_FAILURE);    
-            } 
+        if (ibv_post_recv(app_ctx->qp, &rec_wr, &bad_wr)) {
+            perror("error posting RR.");
+            cleanup(app_ctx);
+            exit(EXIT_FAILURE);    
+        } 
 
-
-        // }
         
         puts("memory and WRs added.");
 
@@ -250,7 +209,6 @@ private:
 				    IBV_QP_QKEY;
 
         do_qp_change(app_ctx->qp, &attr, state, (char*) "INIT");
-
 
         memset(&attr, 0, sizeof(attr));
         attr.qp_state = ibv_qp_state::IBV_QPS_RTR;

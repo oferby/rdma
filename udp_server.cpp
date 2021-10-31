@@ -275,7 +275,7 @@ public:
         // return &neighbor_map[dest_addr->s_addr];
 
 
-        if(neighbor_map.begin()->second.addr == nullptr)
+        if(neighbor_map.empty())
             return nullptr;
 
         return &neighbor_map.begin()->second;

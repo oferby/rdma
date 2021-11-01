@@ -17,10 +17,7 @@ int main()
    	sockaddr_in6 addr6 {0};
 	sockaddr_in6 *client;
 
-	addr6.sin6_family = AF_INET6;
-	addr6.sin6_port = htons(port);
-	addr6.sin6_addr = in6addr_any;
-	// addr6.sin6_addr = in6addr_loopback;
+
 	
 	sock = socket(AF_INET6, SOCK_DGRAM, 0);
 
@@ -32,7 +29,6 @@ int main()
 
 
 	int on = 1;
-
 	if (setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY,
 					(char *)&on, sizeof(on)) == -1)
 		perror("setsockopt IPV6_V6ONLY");
@@ -55,7 +51,7 @@ int main()
 //       recvmsg()
 //       getpeername()
 //       getsockname()
-
+	
 	status = bind(sock, (struct sockaddr*) &addr6, sizeof addr6);
 	if (status == -1) {
 		perror("error creating socket");

@@ -68,11 +68,20 @@ int main()
 
 	socklen_t clientaddr_len = sizeof(struct sockaddr_in6);
 
-	char *buf[2048] {0};
+	char *buf = (char*) calloc (1, 2049);
 
 	while (1)
 	{
-		size_t data  = recvfrom(sock, buf, 2048, 0, (sockaddr*) client, &clientaddr_len);
+		auto data  = recvfrom(sock, buf, 2048, 0, (sockaddr*) client, &clientaddr_len);
+		
+		if (data < 0 ) {
+			perror("error getting data");
+		} else {
+			printf("received %i bytes\n",data);
+			printf("message: %s\n\n", buf);
+		}
+
+
 		
 	}
 		

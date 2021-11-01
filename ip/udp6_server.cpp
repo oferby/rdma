@@ -17,15 +17,13 @@ int main()
    	sockaddr_in6 addr6 {0};
 	sockaddr_in6 *client;
 
-
-	
 	sock = socket(AF_INET6, SOCK_DGRAM, 0);
 
-   int  hoplimit = 10;
+	int  hoplimit = 10;
 
-   if (setsockopt(sock, IPPROTO_IPV6, IPV6_UNICAST_HOPS,
-                  (char *) &hoplimit, sizeof(hoplimit)) == -1)
-       perror("setsockopt IPV6_UNICAST_HOPS");
+	if (setsockopt(sock, IPPROTO_IPV6, IPV6_UNICAST_HOPS,
+					(char *) &hoplimit, sizeof(hoplimit)) == -1)
+		perror("setsockopt IPV6_UNICAST_HOPS");
 
 
 	int on = 1;
@@ -52,9 +50,16 @@ int main()
 //       getpeername()
 //       getsockname()
 	
+	addr6 = {
+		.sin6_family = AF_INET6,
+		.sin6_port = htons(port)
+	};
+
+	addr6.sin6_addr = in6addr_any;
+
 	status = bind(sock, (struct sockaddr*) &addr6, sizeof addr6);
 	if (status == -1) {
-		perror("error creating socket");
+		perror("error binding to socket");
 		exit(1);
 	}
 

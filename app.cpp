@@ -7,17 +7,22 @@ int main(int argc, char* argv[]) {
     bool initiator = false;
     bool sent = false;
 
+   
+    if (argc < 2) {
+        puts("USAGE: app <dev> [<IP>]");
+        exit(EXIT_FAILURE);
+    }
+
+
     ConnectionServer conn_server;    
-    RdmaHandler rdmaHandler;
+    RdmaHandler rdmaHandler {argv[1]};
 
     conn_server.set_rdma_handler(&rdmaHandler);
 
-
     conn_server.start();
-   
 
-    if (argc > 1) {
-        conn_server.send_hello(argv[1]);
+    if (argc > 2) {
+        conn_server.send_hello(argv[2]);
         initiator = true;
     }
 

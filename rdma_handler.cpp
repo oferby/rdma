@@ -17,11 +17,12 @@
 using namespace std;
 
 
-RdmaHandler::RdmaHandler() {
+RdmaHandler::RdmaHandler(char *devname) {
         
         memset(&app_ctx, 0, sizeof app_ctx);
         app_ctx.sge_map = &sge_map;
         app_ctx.available_send_sge_vector = &available_send_sge_vector;
+        app_ctx.devname = devname;
         setup_context(&app_ctx);
         
         int status;

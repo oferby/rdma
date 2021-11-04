@@ -33,6 +33,7 @@ struct app_context {
 	int			 rx_depth;
 	int			 pending;
 	struct ibv_port_attr     *portinfo;
+    char         *devname;
    
     uint64_t wid = 0;
     std::map <uint64_t,ibv_sge*> *sge_map;
@@ -248,7 +249,7 @@ private:
         tmp_dev_list = dev_list;
         while (tmp_dev_list)
         {
-            if (strcmp(ib_dev->name,"rxe0") == 0)
+            if (strcmp(ib_dev->name, app_ctx->devname) == 0)
                 break;
             tmp_dev_list++;
             ib_dev = *tmp_dev_list;
@@ -272,8 +273,16 @@ private:
         }
 
         app_ctx->pd = ibv_alloc_pd(app_ctx->ctx);
+        if (!app_ctx->pd) {
+            perror("Cannot allocate PD");
+            exit(EXIT_FAILURE);
+        }
 
         app_ctx->cq = ibv_create_cq(app_ctx->ctx, CQ_SIZE, nullptr, nullptr, 0);
+        if (!app_ctx->cq) {
+            perror("Cannot create CQ");
+            exit(EXIT_FAILURE);
+        }
 
         createQueuePair(app_ctx);
 
@@ -329,7 +338,7 @@ private:
 
 public:
  	
-	RdmaHandler();
+	RdmaHandler(char*);
 	app_context* get_app_context();
 	app_dest* get_local_dest();
 	void poll_complition();

@@ -9,6 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${fileDirname}/${fileBasenameNoExtension}",
+            // "args": ["rxe0"],
             "args": ["hns_0"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",

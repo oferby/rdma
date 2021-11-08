@@ -7,10 +7,15 @@
 #include <netdb.h>
 #include <string>
 
-int main()
+int main(int argc, char *argv[])
 {
 
-	uint16_t port = 9898;
+    if (argc < 2) {
+        puts("USAGE: udp6_client <IPv6>");
+        exit(EXIT_FAILURE);
+    }
+
+	uint16_t port = 4791;
 
    	int sock;
    	int status;
@@ -33,7 +38,8 @@ int main()
         .sin6_flowinfo = 0
     };
 
-    status = inet_pton(AF_INET6, "fe80::aa49:4dff:fe37:8c20", &addr6.sin6_addr);
+    // status = inet_pton(AF_INET6, "fe80::aa49:4dff:fe37:8c20", &addr6.sin6_addr);
+    status = inet_pton(AF_INET6, argv[1], &addr6.sin6_addr);
     if (status != 1) {
         perror("error setting IPv6 address");
         exit(EXIT_FAILURE);

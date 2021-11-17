@@ -75,13 +75,11 @@ private:
 
             app_context *ctx = rdmaHandler->get_app_context();
 
-            ibv_ah_attr ah_attr = {
-                .dlid = rem_dest->lid,
-                .sl = 0,
-                .src_path_bits = 0,
-                .port_num = PORT_NUM
-            };
-            
+            ibv_ah_attr ah_attr;
+            ah_attr.dlid = rem_dest->lid;
+            ah_attr.sl = 0;
+            ah_attr.src_path_bits = 0;
+            ah_attr.port_num = PORT_NUM;
             ah_attr.is_global = 1;
             ah_attr.grh.dgid = *(rem_dest->gid);
             ah_attr.grh.hop_limit = 1;

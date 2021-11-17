@@ -10,12 +10,12 @@
 
 #define PORT_NUM 1
 #define QKEY 0x11111111
-#define GID_IDX 0
+#define GID_IDX 1
 #define IB_PORT 1
 #define MSG_SIZE 1500
 #define CQ_SIZE 10
 #define MAX_WR 10
-#define MAX_SGE 1
+#define MAX_SGE 10
 
 
 struct app_context {

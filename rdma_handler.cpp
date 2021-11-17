@@ -68,12 +68,14 @@ void RdmaHandler::cleanup(app_context *ctx) {
 
 }
 
+static inline bool check_comp_mask(uint64_t input, uint64_t supported)
+{
+	return (input & ~supported) == 0;
+}
 
 void RdmaHandler::createQueuePair(app_context *app_ctx) {
 
-    struct ibv_qp_attr attr;
-
-    ibv_qp_init_attr_ex init_attr_ex = {};
+    ibv_qp_init_attr_ex init_attr_ex = {0};
     init_attr_ex.send_cq = app_ctx->cq;
     init_attr_ex.recv_cq = app_ctx->cq;
     init_attr_ex.cap     = {
@@ -90,7 +92,7 @@ void RdmaHandler::createQueuePair(app_context *app_ctx) {
                             // | IBV_QP_INIT_ATTR_CREATE_FLAGS 
                             // | IBV_QP_INIT_ATTR_SEND_OPS_FLAGS;
 
-    // init_attr_ex.send_ops_flags = IBV_QP_EX_WITH_SEND;        
+    init_attr_ex.send_ops_flags = IBV_QP_EX_WITH_SEND;       
 
     app_ctx->qp = ibv_create_qp_ex(app_ctx->ctx, &init_attr_ex);
     if (!app_ctx->qp) {
@@ -239,12 +241,20 @@ void RdmaHandler::setup_context(app_context *app_ctx) {
     }
     
     tmp_dev_list = dev_list;
+    bool found = false;
     while (tmp_dev_list)
     {
-        if (strcmp(ib_dev->name, app_ctx->devname) == 0)
+        if (strcmp(ib_dev->name, app_ctx->devname) == 0) {
+            found = true;
             break;
+        }
         tmp_dev_list++;
         ib_dev = *tmp_dev_list;
+    }
+
+    if (!found){
+        printf("could not find dev %s", app_ctx->devname);
+        exit(EXIT_FAILURE);
     }
     
     printf("using dev name: %s\n", ib_dev->name);
@@ -257,7 +267,9 @@ void RdmaHandler::setup_context(app_context *app_ctx) {
 
     ibv_free_device_list(dev_list);
 
-    app_ctx->portinfo = (ibv_port_attr*) calloc(1, sizeof app_ctx->portinfo);
+    // app_ctx->portinfo = (ibv_port_attr*) calloc(1, sizeof app_ctx->portinfo);
+    ibv_port_attr port_info = {};
+    app_ctx->portinfo = &port_info;
     status = ibv_query_port(app_ctx->ctx, IB_PORT, app_ctx->portinfo);
     if (status == -1) {
         perror("could not get port info");
@@ -265,6 +277,10 @@ void RdmaHandler::setup_context(app_context *app_ctx) {
     }
 
     app_ctx->pd = ibv_alloc_pd(app_ctx->ctx);
+    if (!app_ctx->pd) {
+	    fprintf(stderr, "Error, ibv_alloc_pd() failed\n");
+	    exit(EXIT_FAILURE);
+    }
 
     app_ctx->cq = ibv_create_cq(app_ctx->ctx, CQ_SIZE, nullptr, nullptr, 0);
 

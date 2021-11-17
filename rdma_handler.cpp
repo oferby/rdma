@@ -78,13 +78,13 @@ void RdmaHandler::createQueuePair(app_context *app_ctx) {
     ibv_qp_init_attr_ex init_attr_ex = {0};
     init_attr_ex.send_cq = app_ctx->cq;
     init_attr_ex.recv_cq = app_ctx->cq;
-    init_attr_ex.cap     = {
-            .max_send_wr  = MAX_WR,
-            .max_recv_wr  = MAX_WR,
-            .max_send_sge = MAX_SGE,
-            .max_recv_sge = MAX_SGE,
+
+    init_attr_ex.cap     = {};
+    init_attr_ex.cap.max_send_wr  = MAX_WR;
+    init_attr_ex.cap.max_recv_wr  = MAX_WR;
+    init_attr_ex.cap.max_send_sge = MAX_SGE;
+    init_attr_ex.cap.max_recv_sge = MAX_SGE;
             
-        };
     init_attr_ex.qp_type = IBV_QPT_UD;
     init_attr_ex.sq_sig_all = 1;
     init_attr_ex.pd = app_ctx->pd;

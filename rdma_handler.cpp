@@ -92,7 +92,7 @@ void RdmaHandler::createQueuePair(app_context *app_ctx) {
                             // | IBV_QP_INIT_ATTR_CREATE_FLAGS 
                             // | IBV_QP_INIT_ATTR_SEND_OPS_FLAGS;
 
-    init_attr_ex.send_ops_flags = IBV_QP_EX_WITH_SEND;       
+    // init_attr_ex.send_ops_flags = IBV_QP_EX_WITH_SEND;       
 
     app_ctx->qp = ibv_create_qp_ex(app_ctx->ctx, &init_attr_ex);
     if (!app_ctx->qp) {
@@ -165,11 +165,10 @@ void RdmaHandler::setup_memory(app_context *app_ctx) {
         sge->length = msg_size;
         sge->lkey = app_ctx->mr->lkey;
 
-        ibv_recv_wr rec_wr = {
-            .wr_id = app_ctx->wid++,
-            .sg_list = sge,
-            .num_sge = 1, 
-        };
+        ibv_recv_wr rec_wr = {};
+        rec_wr.wr_id = app_ctx->wid++;
+        rec_wr.sg_list = sge;
+        rec_wr.num_sge = 1;
 
         ibv_recv_wr *bad_wr;
 
@@ -189,12 +188,11 @@ void RdmaHandler::setup_memory(app_context *app_ctx) {
 
 void RdmaHandler::changeQueuePairState(app_context *app_ctx) {
 
-    ibv_qp_attr attr = {
-        .qp_state        = IBV_QPS_INIT,
-        .qkey            = QKEY,
-        .pkey_index      = 0,
-        .port_num        = PORT_NUM
-    };
+    ibv_qp_attr attr = {};
+    attr.qp_state        = IBV_QPS_INIT;
+    attr.qkey            = QKEY;
+    attr.pkey_index      = 0;
+    attr.port_num        = PORT_NUM;
 
     int state = IBV_QP_STATE              |
                 IBV_QP_PKEY_INDEX         |

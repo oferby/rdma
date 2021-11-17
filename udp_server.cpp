@@ -22,6 +22,7 @@ class ConnectionServer {
 
 private:
 
+    string local_addr;
     RdmaHandler *rdmaHandler;
 
     std::map <uint32_t, neighbor> neighbor_map;
@@ -137,6 +138,10 @@ private:
 
 public:
 
+    ConnectionServer(char *ip_addr) {
+        local_addr = {ip_addr};
+    }
+
     void set_rdma_handler(RdmaHandler *handler) {
         rdmaHandler = handler;
         app_dest *dest =  rdmaHandler->get_local_dest();
@@ -158,7 +163,7 @@ public:
         auto addresslen = sizeof(simpleServer);
         bzero(&simpleServer,addresslen);
         simpleServer.sin_family = AF_INET;
-        simpleServer.sin_addr.s_addr = INADDR_ANY;
+        simpleServer.sin_addr.s_addr = inet_addr(local_addr.c_str());    //INADDR_ANY;
         simpleServer.sin_port = htons(PORT);
     
         int status = bind(sd, (struct sockaddr *) &simpleServer, addresslen);
@@ -262,16 +267,6 @@ public:
 
 
     neighbor* get_app_dest(const char *addr) {
-         
-        // in_addr *dest_addr = new in_addr();
-
-        // inet_aton(addr, dest_addr);
-        
-        // if (neighbor_map[dest_addr->s_addr].addr == nullptr)
-        //     return nullptr;
-        
-        // return &neighbor_map[dest_addr->s_addr];
-
 
         if(neighbor_map.empty())
             return nullptr;

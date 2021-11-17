@@ -2,28 +2,36 @@
 #include "rdma_handler.cpp"
 #include "udp_server.cpp"
 
+void print_usage_and_exit() {
+    puts("\nUSAGE: app <dev> <IP> [<-s> <IP>]\n");
+    exit(EXIT_FAILURE);
+}
+
 int main(int argc, char* argv[]) {
     
     bool initiator = false;
     bool sent = false;
 
    
-    if (argc < 2) {
-        puts("USAGE: app <dev> [<IP>]");
-        exit(EXIT_FAILURE);
-    }
+    if (argc < 3) 
+        print_usage_and_exit();    
 
-
-    ConnectionServer conn_server;    
+    ConnectionServer conn_server {argv[2]};    
     RdmaHandler rdmaHandler {argv[1]};
 
     conn_server.set_rdma_handler(&rdmaHandler);
 
     conn_server.start();
 
-    if (argc > 2) {
-        conn_server.send_hello(argv[2]);
-        initiator = true;
+    if (argc > 3 && strcmp(argv[3],"-s") == 0) {
+        if (argc == 5) {
+            conn_server.send_hello(argv[4]);
+            initiator = true;
+        } else {
+            print_usage_and_exit();
+            
+        }
+        
     }
 
     while (1)

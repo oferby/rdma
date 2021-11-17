@@ -18,3 +18,5 @@ export LD_LIBRARY_PATH=/home/oferb/dev/rdma-core/build/lib:$LD_LIBRARY_PATH
 
 g++ app.cpp -o app -libverbs -L /home/oferb/dev/rdma-core/build/lib
 
+# for Huawei NIC
+- hiroce gids

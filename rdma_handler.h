@@ -15,7 +15,7 @@
 #define MSG_SIZE 1500
 #define CQ_SIZE 10
 #define MAX_WR 10
-#define MAX_SGE 10
+#define MAX_SGE 1
 
 
 struct app_context {

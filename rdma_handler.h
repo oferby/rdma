@@ -13,6 +13,7 @@
 #define GID_IDX 1
 #define IB_PORT 1
 #define MSG_SIZE 1500
+#define GRH_SIZE 40
 #define CQ_SIZE 10
 #define MAX_WR 10
 #define MAX_SGE 1

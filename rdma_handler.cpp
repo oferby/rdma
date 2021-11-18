@@ -127,7 +127,7 @@ void RdmaHandler::setup_memory(app_context *app_ctx) {
     
     puts("setting up memory.");
 
-    int mr_size =  ( MSG_SIZE + 40 ) * MAX_WR;
+    int mr_size =  ( MSG_SIZE + GRH_SIZE ) * MAX_WR;
     int alignment = sysconf(_SC_PAGESIZE);
     app_ctx->buf = (char*) memalign(alignment, mr_size);
 
@@ -144,10 +144,9 @@ void RdmaHandler::setup_memory(app_context *app_ctx) {
         exit(EXIT_FAILURE);
     }
 
-    uint32_t msg_size = MSG_SIZE + 40;
+    uint32_t msg_size = MSG_SIZE + GRH_SIZE;
 
-
-    uint64_t mem_addr = (uintptr_t) app_ctx->buf;
+    uint64_t mem_addr = reinterpret_cast<uint64_t>(app_ctx->buf);
 
     ibv_sge *sge = (ibv_sge*) calloc(1, sizeof sge);
     sge->addr = mem_addr;
@@ -166,7 +165,7 @@ void RdmaHandler::setup_memory(app_context *app_ctx) {
         sge->lkey = app_ctx->mr->lkey;
 
         ibv_recv_wr rec_wr = {};
-        rec_wr.wr_id = app_ctx->wid++;
+        rec_wr.wr_id = reinterpret_cast<uint64_t>(sge);
         rec_wr.sg_list = sge;
         rec_wr.num_sge = 1;
 
@@ -265,7 +264,6 @@ void RdmaHandler::setup_context(app_context *app_ctx) {
 
     ibv_free_device_list(dev_list);
 
-    // app_ctx->portinfo = (ibv_port_attr*) calloc(1, sizeof app_ctx->portinfo);
     ibv_port_attr port_info = {};
     app_ctx->portinfo = &port_info;
     status = ibv_query_port(app_ctx->ctx, IB_PORT, app_ctx->portinfo);
@@ -297,6 +295,15 @@ void RdmaHandler::handle_rr() {
 
     if (wc.wc_flags && IBV_WC_GRH) {
         puts("GRH exists in payload.");
+        printf("WR ID: %i\n",wc.wr_id);
+        
+        ibv_sge *sge = reinterpret_cast<ibv_sge*>(wc.wr_id);
+        printf("SGE addr: %i, Data addr: %i, length: %i\n", reinterpret_cast<uint64_t>(sge), sge->addr, wc.byte_len);
+
+        char *data;
+        auto p = reinterpret_cast<void*>(sge->addr + GRH_SIZE);
+        memcpy(data, p, wc.byte_len);
+        printf("SGE message: %s\n", data);
 
     }
 
@@ -305,7 +312,7 @@ void RdmaHandler::handle_rr() {
 
 void RdmaHandler::handle_sr(){
 
-    printf("WC: sent %i bytes\n",wc.byte_len);
+    printf("WC: sent %i bytes\n", wc.byte_len);
 
 }
 
@@ -354,11 +361,11 @@ void RdmaHandler::poll_complition() {
         }
 
         if (status > 0) {
-            if(wc.status == ibv_wc_status::IBV_WC_SUCCESS) 
+            printf("wid: %i, opcode: %i\n", wc.wr_id, wc.opcode);
+            if(wc.status == ibv_wc_status::IBV_WC_SUCCESS) {
                 handle_wc();
-            else {
+            } else {
                 puts("got error processing WC.");
-                printf("wid: %i, opcode: %i\n", wc.wr_id, wc.opcode);
             }
 
         }
@@ -384,7 +391,7 @@ void RdmaHandler::create_send_request(const char *data, size_t len, app_dest *de
     sge->length = len;
 
     ibv_send_wr *send_wr = new ibv_send_wr();
-    send_wr->wr_id = app_ctx.wid++,
+    send_wr->wr_id = reinterpret_cast<uint64_t>(sge);
     send_wr->sg_list = sge;
     send_wr->num_sge = 1;
     send_wr->opcode = IBV_WR_SEND;

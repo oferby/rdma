@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -144,8 +143,6 @@ public:
 
     void set_rdma_handler(RdmaHandler *handler) {
         rdmaHandler = handler;
-        app_dest *dest =  rdmaHandler->get_local_dest();
-        set_hello_msg(dest);
     }
 
     void start() {

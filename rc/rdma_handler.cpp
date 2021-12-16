@@ -23,9 +23,11 @@ RdmaHandler::RdmaHandler(char *devname) {
         app_ctx->sge_map = &sge_map;
         app_ctx->available_send_sge_vector = &available_send_sge_vector;
         app_ctx->devname = devname;
-        setup_context();
         
-        int status;
+        setup_context();
+        create_srq();
+        setup_memory(); 
+            
         
 }
 
@@ -91,12 +93,12 @@ void RdmaHandler::setup_context() {
     }
 
     app_ctx->cq = ibv_create_cq(app_ctx->ctx, CQ_SIZE, nullptr, nullptr, 0);
-
-    create_srq();
-    setup_memory();       
+    if (!app_ctx->cq) {
+        perror("could not create CQ");
+        exit(EXIT_FAILURE);
+    }
 
 }
-
 
 void RdmaHandler::create_srq() {
     

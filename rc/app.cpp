@@ -19,20 +19,20 @@ int main(int argc, char* argv[]) {
     ConnectionServer conn_server {argv[2]};    
     RdmaHandler rdmaHandler {argv[1]};
 
-    // conn_server.set_rdma_handler(&rdmaHandler);
+    conn_server.set_rdma_handler(&rdmaHandler);
 
-    // conn_server.start();
+    conn_server.start();
 
-    // if (argc > 3 && strcmp(argv[3],"-s") == 0) {
-    //     if (argc == 5) {
-    //         conn_server.send_hello(argv[4]);
-    //         initiator = true;
-    //     } else {
-    //         print_usage_and_exit();
+    if (argc > 3 && strcmp(argv[3],"-s") == 0) {
+        if (argc == 5) {
+            conn_server.send_hello(argv[4]);
+            initiator = true;
+        } else {
+            print_usage_and_exit();
             
-    //     }
+        }
         
-    // }
+    }
 
     while (1)
     {

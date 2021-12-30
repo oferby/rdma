@@ -2,3 +2,7 @@ app
 ip/udp6_server
 ip/udp6_client
 test
+rc/bazel-bin
+rc/bazel-out
+rc/bazel-rc
+rc/bazel-testlogs

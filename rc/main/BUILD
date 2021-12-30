@@ -1,9 +1,12 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 
 cc_library(
     name = "rdma_handler",
     srcs = ["rdma_handler.cpp"],
     hdrs = ["rdma_handler.h"],
+    deps = [
+        "@usr//:ibverbs"
+    ],
 )
 
 
@@ -18,6 +21,7 @@ cc_library(
 cc_binary(
     name = "app",
     srcs = ["app.cpp"],
-    deps = ["rdma_handler", "udp_server"]
+    deps = [":rdma_handler", 
+            ":udp_server"]
     
 )

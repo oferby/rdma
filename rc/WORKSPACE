@@ -1,0 +1,6 @@
+new_local_repository(
+  name = "usr",
+  path = "/usr",
+  build_file = "usr/BUILD",
+)
+

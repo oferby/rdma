@@ -1,6 +1,8 @@
+
+
 #include <stdio.h>
-#include "rdma_handler.cpp"
-#include "udp_server.cpp"
+#include "rdma_handler.h"
+#include "udp_server.h"
 
 void print_usage_and_exit() {
     puts("\nUSAGE: app <dev> <IP> [<-s> <IP>]\n");
@@ -36,7 +38,7 @@ int main(int argc, char* argv[]) {
 
     while (1)
     {
-        // conn_server.handle_events();
+        conn_server.handle_events();
         // rdmaHandler.poll_complition();
 
         // if (initiator & !sent & conn_server.get_app_dest() != nullptr ) {

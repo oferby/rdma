@@ -89,10 +89,6 @@ void RdmaHandler::createQueuePair(app_context *app_ctx) {
     init_attr_ex.sq_sig_all = 1;
     init_attr_ex.pd = app_ctx->pd;
     init_attr_ex.comp_mask  = IBV_QP_INIT_ATTR_PD;
-                            // | IBV_QP_INIT_ATTR_CREATE_FLAGS 
-                            // | IBV_QP_INIT_ATTR_SEND_OPS_FLAGS;
-
-    // init_attr_ex.send_ops_flags = IBV_QP_EX_WITH_SEND;       
 
     app_ctx->qp = ibv_create_qp_ex(app_ctx->ctx, &init_attr_ex);
     if (!app_ctx->qp) {

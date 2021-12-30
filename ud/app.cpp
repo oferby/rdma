@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "rdma_handler.cpp"
-#include "../common/udp_server.cpp"
+#include "udp_server.cpp"
 
 void print_usage_and_exit() {
     puts("\nUSAGE: app <dev> <IP> [<-s> <IP>]\n");

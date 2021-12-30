@@ -1,17 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <stdexcept>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/time.h>
-#include <malloc.h>
-#include <getopt.h>
-#include <time.h>
-#include <arpa/inet.h>
-#include <map>
-#include <vector>
-
 #include "rdma_handler.h"
 
 using namespace std;
@@ -26,8 +12,10 @@ RdmaHandler::RdmaHandler(char *devname) {
         
         setup_context();
         create_srq();
+        create_queue_pair();
         setup_memory(); 
-            
+        create_local_dest();
+
         
 }
 
@@ -118,6 +106,52 @@ void RdmaHandler::create_srq() {
 
 }
 
+void RdmaHandler::create_queue_pair() {
+
+    ibv_qp_init_attr_ex init_attr_ex = {0};
+    init_attr_ex.send_cq = app_ctx->cq;
+    init_attr_ex.recv_cq = app_ctx->cq;
+    init_attr_ex.srq = app_ctx->srq;
+
+    init_attr_ex.cap     = {};
+    init_attr_ex.cap.max_send_wr  = MAX_WR;
+    init_attr_ex.cap.max_recv_wr  = MAX_WR;
+    init_attr_ex.cap.max_send_sge = MAX_SGE;
+    init_attr_ex.cap.max_recv_sge = MAX_SGE;
+            
+    init_attr_ex.qp_type = IBV_QPT_RC;
+    init_attr_ex.sq_sig_all = 1;
+    init_attr_ex.pd = app_ctx->pd;
+    init_attr_ex.comp_mask  = IBV_QP_INIT_ATTR_PD;
+
+    app_ctx->qp = ibv_create_qp_ex(app_ctx->ctx, &init_attr_ex);
+    if (!app_ctx->qp) {
+        perror("could not create QP");
+        exit(1);
+    }
+
+    puts("QP created.");
+
+}
+
+void RdmaHandler::do_qp_change(ibv_qp* qp, ibv_qp_attr *attr, int state, char *mode) {
+
+    auto status = ibv_modify_qp(qp, attr, state);
+
+    if (status == 0)
+        printf("QP changed to %s\n", mode);
+    else if (status == EINVAL)
+        printf("Invalid value provided in attr or in attr_mask for mode %s\n", mode);
+    else if (status == ENOMEM)
+        printf("Not enough resources to complete this operation for mode %s\n", mode);
+    else
+        printf("QP modify status: %i for mode %s\n",status, mode);
+
+    if (status != 0)
+        exit(EXIT_FAILURE);
+
+}
+
 void RdmaHandler::setup_memory() {
     
     puts("setting up memory.");
@@ -177,6 +211,28 @@ void RdmaHandler::setup_memory() {
     
     puts("memory and WRs added.");
 
+}
+
+void RdmaHandler::create_local_dest() {
+    
+    local_dest = (app_dest*) calloc(1, sizeof local_dest);
+    local_dest->lid = app_ctx->portinfo->lid;
+    local_dest->qpn = app_ctx->qp->qp_num;
+    local_dest->psn = 1;
+    
+    local_dest->gid = (ibv_gid*) calloc(1, sizeof local_dest->gid);
+
+    status = ibv_query_gid(app_ctx->ctx, IB_PORT, GID_IDX, local_dest->gid);
+    if (status == -1) {
+        perror("could not get GID");
+        exit(EXIT_FAILURE);
+    }
+
+    print_dest(local_dest);
+}
+
+app_dest* RdmaHandler::get_local_dest() {
+    return local_dest;
 }
 
 void RdmaHandler::cleanup() {

@@ -16,5 +16,8 @@ ibv_devinfo -vv
 
 g++ app.cpp -o app -libverbs -std=c++11
 
+./app  hrn0_1 192.168.60.5
+
+
 # for Huawei NIC
 - hiroce gids

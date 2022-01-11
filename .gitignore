@@ -6,3 +6,4 @@ rc/bazel-bin
 rc/bazel-out
 rc/bazel-rc
 rc/bazel-testlogs
+raw_ethernet/server

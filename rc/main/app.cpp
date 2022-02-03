@@ -1,5 +1,4 @@
 
-
 #include <stdio.h>
 #include "rdma_handler.h"
 #include "udp_server.h"
@@ -45,7 +44,7 @@ int main(int argc, char* argv[]) {
             
         //     puts("sending SR.");
         //     neighbor *n = conn_server.get_app_dest();
-        //     string data = "this is a message!";
+        //     std::string data = "this is a message!";
         //     rdmaHandler.create_send_request(data.c_str(), data.length(), n->dest);
 
         //     sent = true;

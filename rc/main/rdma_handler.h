@@ -85,26 +85,22 @@ private:
 	void setup_context();
 
 	void create_srq();
-	
-	void create_queue_pair();
 
 	void setup_memory();
 
 	void create_local_dest();
 
-	
+	void create_queue_pair();
 
 	void do_qp_change(ibv_qp* qp, ibv_qp_attr *attr, int state, char *mode); 
 
-	// void do_qp_change(ibv_qp* qp, ibv_qp_attr *attr, int state, char *mode);
+    void changeQueuePairState(app_context *app_ctx); 
 
-    // void changeQueuePairState(app_context *app_ctx); 
+    void handle_rr();
 
-    // void handle_rr();
+    void handle_sr();
 
-    // void handle_sr();
-
-    // void handle_wc();
+    void handle_wc();
 
 	void cleanup();
 
@@ -114,7 +110,7 @@ public:
 	app_context* get_app_context();
 	app_dest* get_local_dest();
 	// void poll_complition();
-	// void create_send_request(const char *data, size_t len, app_dest *dest);
+	void create_send_request(const char *data, size_t len, app_dest *dest);
 };
 
 static void print_gid(const union ibv_gid *gid) {
@@ -153,7 +149,7 @@ static void gid_to_wire_gid(const union ibv_gid *gid, char wgid[]) {
 
 static void print_dest(app_dest * dest) {
 		static char gid[33];
-        inet_ntop(AF_INET6, dest->gid, gid, sizeof gid);
+        inet_ntop(AF_INET6, dest->gid, gid, sizeof(gid));
 	    printf("  address:  LID 0x%04x, QPN 0x%06x, PSN 0x%06x: GID %s\n",
 			dest->lid, dest->qpn, dest->psn, gid);
 }

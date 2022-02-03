@@ -57,7 +57,6 @@ void ConnectionServer::start() {
 
             puts("listen socket added to epoll list.");
 
-
         };
 
 void ConnectionServer::server_receive_event()
@@ -69,15 +68,12 @@ void ConnectionServer::server_receive_event()
 
             len = recvfrom(sd, recvbuf, sizeof(recvbuf), 0, (struct sockaddr*)&clientaddr, &clientaddr_len);
             if (len > 0) {
+
                 char *ip = inet_ntoa(clientaddr.sin_addr);
                 printf("got %i bytes from %s\n", len, ip);
 
-                app_dest *rem_dest;
-                rem_dest = (app_dest*) malloc(sizeof rem_dest);
-                memset(rem_dest, 0, sizeof rem_dest);
-                
+                app_dest *rem_dest = new app_dest;
                 get_dest(recvbuf, rem_dest);
-                
                 print_dest(rem_dest);
                 add_neighbor(&clientaddr, &clientaddr_len, rem_dest);
             }
@@ -116,34 +112,35 @@ void ConnectionServer::send_hello(char *dest) {
         }
 
 void ConnectionServer::send_hello(sockaddr_in *dest, socklen_t *clientaddr_len) {
-        
+            
+            // printf("message: %s, size %i\n", this->hello_msg, this->msg_size);
             printf("sending hello to %s\n", inet_ntoa(dest->sin_addr));
 
+            
             int result;
-
             result = sendto(sd, this->hello_msg, this->msg_size, 0, (sockaddr*) dest, *clientaddr_len);
             if (result < 0) {
-                perror("error sendin hellow message");
+                perror("error sending hellow message");
             } else {
                 printf("%i bytes sent.\n", result);
             }
         }
 
-        neighbor* ConnectionServer::get_app_dest(const char *addr) {
+neighbor* ConnectionServer::get_app_dest(const char *addr) {
 
-            if(neighbor_map.empty())
-                return nullptr;
+    if(neighbor_map.empty())
+        return nullptr;
 
-            return &neighbor_map.begin()->second;
+    return &neighbor_map.begin()->second;
 
-        }
+}
 
-        neighbor* ConnectionServer::get_app_dest() {
-            
-            if(neighbor_map.begin()->second.addr == nullptr)
-                return nullptr;
+neighbor* ConnectionServer::get_app_dest() {
+    
+    if(neighbor_map.begin()->second.addr == nullptr)
+        return nullptr;
 
-            return &neighbor_map.begin()->second;
+    return &neighbor_map.begin()->second;
 
-        }
+}
 

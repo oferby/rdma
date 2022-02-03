@@ -54,7 +54,7 @@ class ConnectionServer {
             sscanf(msg, "%x:%x:%x:%s", &rem_dest->lid, &rem_dest->qpn,
                                     &rem_dest->psn, tmp_gid);
 
-            rem_dest->gid = (ibv_gid*) malloc(sizeof rem_dest->gid);
+            rem_dest->gid = new ibv_gid;
             wire_gid_to_gid(tmp_gid, rem_dest->gid);
 
         }
@@ -74,24 +74,26 @@ class ConnectionServer {
 
                 neighbor_map[clientaddr->sin_addr.s_addr] = n;
 
-                app_context *ctx = rdmaHandler->get_app_context();
+                // app_context *ctx = rdmaHandler->get_app_context();
 
-                ibv_ah_attr ah_attr;
-                ah_attr.dlid = rem_dest->lid;
-                ah_attr.sl = 0;
-                ah_attr.src_path_bits = 0;
-                ah_attr.port_num = PORT_NUM;
-                ah_attr.is_global = 1;
-                ah_attr.grh.dgid = *(rem_dest->gid);
-                ah_attr.grh.hop_limit = 1;
-                ah_attr.grh.sgid_index = GID_IDX;
+                // ibv_ah_attr ah_attr;
+                // ah_attr.dlid = rem_dest->lid;
+                // ah_attr.sl = 0;
+                // ah_attr.src_path_bits = 0;
+                // ah_attr.port_num = PORT_NUM;
+                // ah_attr.is_global = 1;
+                // ah_attr.grh.dgid = *(rem_dest->gid);
+                // ah_attr.grh.hop_limit = 1;
+                // ah_attr.grh.sgid_index = GID_IDX;
 
-                ibv_ah *ah = ibv_create_ah(ctx->pd, &ah_attr);
-                if (!ah) {
-                    perror("error creating AH.");
-                }
+                // ibv_ah *ah = ibv_create_ah(ctx->pd, &ah_attr);
+                // if (!ah) {
+                //     perror("error creating AH.");
+                // }
 
-                n.dest->ah = ah;
+                // n.dest->ah = ah;
+
+                puts("remote address added.");
 
                 check_sending_hello(clientaddr, clientaddr_len);
             

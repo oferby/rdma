@@ -12,8 +12,8 @@ RdmaHandler::RdmaHandler(char *devname) {
         
         setup_context();
         create_srq();
+        setup_memory();
         create_queue_pair();
-        setup_memory(); 
         create_local_dest();
 
         
@@ -106,52 +106,6 @@ void RdmaHandler::create_srq() {
 
 }
 
-void RdmaHandler::create_queue_pair() {
-
-    ibv_qp_init_attr_ex init_attr_ex = {0};
-    init_attr_ex.send_cq = app_ctx->cq;
-    init_attr_ex.recv_cq = app_ctx->cq;
-    init_attr_ex.srq = app_ctx->srq;
-
-    init_attr_ex.cap     = {};
-    init_attr_ex.cap.max_send_wr  = MAX_WR;
-    init_attr_ex.cap.max_recv_wr  = MAX_WR;
-    init_attr_ex.cap.max_send_sge = MAX_SGE;
-    init_attr_ex.cap.max_recv_sge = MAX_SGE;
-            
-    init_attr_ex.qp_type = IBV_QPT_RC;
-    init_attr_ex.sq_sig_all = 1;
-    init_attr_ex.pd = app_ctx->pd;
-    init_attr_ex.comp_mask  = IBV_QP_INIT_ATTR_PD;
-
-    app_ctx->qp = ibv_create_qp_ex(app_ctx->ctx, &init_attr_ex);
-    if (!app_ctx->qp) {
-        perror("could not create QP");
-        exit(1);
-    }
-
-    puts("QP created.");
-
-}
-
-void RdmaHandler::do_qp_change(ibv_qp* qp, ibv_qp_attr *attr, int state, char *mode) {
-
-    auto status = ibv_modify_qp(qp, attr, state);
-
-    if (status == 0)
-        printf("QP changed to %s\n", mode);
-    else if (status == EINVAL)
-        printf("Invalid value provided in attr or in attr_mask for mode %s\n", mode);
-    else if (status == ENOMEM)
-        printf("Not enough resources to complete this operation for mode %s\n", mode);
-    else
-        printf("QP modify status: %i for mode %s\n",status, mode);
-
-    if (status != 0)
-        exit(EXIT_FAILURE);
-
-}
-
 void RdmaHandler::setup_memory() {
     
     puts("setting up memory.");
@@ -213,6 +167,34 @@ void RdmaHandler::setup_memory() {
 
 }
 
+void RdmaHandler::create_queue_pair() {
+
+    ibv_qp_init_attr_ex init_attr_ex = {0};
+    init_attr_ex.send_cq = app_ctx->cq;
+    init_attr_ex.recv_cq = app_ctx->cq;
+    init_attr_ex.srq = app_ctx->srq;
+
+    init_attr_ex.cap     = {};
+    init_attr_ex.cap.max_send_wr  = MAX_WR;
+    init_attr_ex.cap.max_recv_wr  = MAX_WR;
+    init_attr_ex.cap.max_send_sge = MAX_SGE;
+    init_attr_ex.cap.max_recv_sge = MAX_SGE;
+            
+    init_attr_ex.qp_type = IBV_QPT_RC;
+    init_attr_ex.sq_sig_all = 1;
+    init_attr_ex.pd = app_ctx->pd;
+    init_attr_ex.comp_mask  = IBV_QP_INIT_ATTR_PD;
+
+    app_ctx->qp = ibv_create_qp_ex(app_ctx->ctx, &init_attr_ex);
+    if (!app_ctx->qp) {
+        perror("could not create QP");
+        exit(1);
+    }
+
+    puts("QP created.");
+
+}
+
 void RdmaHandler::create_local_dest() {
     
     local_dest = (app_dest*) calloc(1, sizeof local_dest);
@@ -234,6 +216,29 @@ void RdmaHandler::create_local_dest() {
 app_dest* RdmaHandler::get_local_dest() {
     return local_dest;
 }
+
+
+// void RdmaHandler::do_qp_change(ibv_qp* qp, ibv_qp_attr *attr, int state, char *mode) {
+
+//     auto status = ibv_modify_qp(qp, attr, state);
+
+//     if (status == 0)
+//         printf("QP changed to %s\n", mode);
+//     else if (status == EINVAL)
+//         printf("Invalid value provided in attr or in attr_mask for mode %s\n", mode);
+//     else if (status == ENOMEM)
+//         printf("Not enough resources to complete this operation for mode %s\n", mode);
+//     else
+//         printf("QP modify status: %i for mode %s\n",status, mode);
+
+//     if (status != 0)
+//         exit(EXIT_FAILURE);
+
+// }
+
+
+
+
 
 void RdmaHandler::cleanup() {
 

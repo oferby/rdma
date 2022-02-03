@@ -144,3 +144,82 @@ neighbor* ConnectionServer::get_app_dest() {
 
 }
 
+void ConnectionServer::set_hello_msg(app_dest *dest) {
+
+    local_dest = dest;
+    this->hello_msg = get_hello_msg(dest);
+    this->msg_size = sizeof "0000:000000:000000:00000000000000000000000000000000";
+}
+
+void ConnectionServer::add_neighbor(sockaddr_in *clientaddr, socklen_t *clientaddr_len, app_dest *rem_dest) {
+    
+    if (neighbor_map.count(clientaddr->sin_addr.s_addr)  == 0 ) {
+        puts("adding new addr");
+        
+        neighbor n = {
+            .addr = clientaddr,
+            .dest = rem_dest,
+            .lastHello = time(nullptr)
+        };
+
+        neighbor_map[clientaddr->sin_addr.s_addr] = n;
+
+        app_context *ctx = rdmaHandler->get_app_context();
+
+        ibv_ah_attr ah_attr;
+        ah_attr.dlid = rem_dest->lid;
+        ah_attr.sl = 0;
+        ah_attr.src_path_bits = 0;
+        ah_attr.port_num = PORT_NUM;
+        ah_attr.is_global = 1;
+        ah_attr.grh.dgid = *(rem_dest->gid);
+        ah_attr.grh.hop_limit = 1;
+        ah_attr.grh.sgid_index = GID_IDX;
+
+        ibv_ah *ah = ibv_create_ah(ctx->pd, &ah_attr);
+        if (!ah) {
+            perror("error creating AH.");
+        }
+
+        n.dest->ah = ah;
+
+        puts("remote address added.");
+
+        check_sending_hello(clientaddr, clientaddr_len);
+    
+    } else {
+
+        char *ip = inet_ntoa(clientaddr->sin_addr);
+
+        printf("address %s exists. updating last hello time.\n", ip);
+        neighbor_map[clientaddr->sin_addr.s_addr].lastHello = time(nullptr);
+        free(rem_dest->gid);
+        free(rem_dest);
+
+    }
+
+}
+
+void ConnectionServer::check_sending_hello(sockaddr_in *clientaddr, socklen_t *clientaddr_len) {
+    
+    if (pending_hello.find(clientaddr->sin_addr.s_addr) == pending_hello.end() ) {
+        
+        puts("client address not in pending list. sending hello.");
+
+        pending_hello.insert(clientaddr->sin_addr.s_addr);
+
+        send_hello(clientaddr, clientaddr_len);
+
+        return;
+    } 
+
+    puts("client address in pending list.");
+    pending_hello.erase(clientaddr->sin_addr.s_addr);
+
+}
+
+
+
+
+
+

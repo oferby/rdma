@@ -1,4 +1,5 @@
 #include "rdma_handler.h"
+#include <inttypes.h>
 
 using namespace std;
 
@@ -235,6 +236,85 @@ app_dest* RdmaHandler::get_local_dest() {
 //         exit(EXIT_FAILURE);
 
 // }
+
+
+
+
+
+void RdmaHandler::poll_complition() {
+
+        status = ibv_poll_cq(app_ctx->cq, 1, &wc);
+        if (status < 0) {
+            perror("error getting WC.");
+            return;
+
+        }
+
+        if (status > 0) {
+            printf("wid: " PRId64 ", opcode: %i\n", wc.wr_id, wc.opcode);
+            if(wc.status == ibv_wc_status::IBV_WC_SUCCESS) {
+                handle_wc();
+            } else {
+                puts("got error processing WC.");
+            }
+
+        }
+
+}
+
+
+
+void RdmaHandler::handle_rr() {
+    
+    printf("WC: received %i\n",wc.byte_len);
+
+    if (wc.wc_flags && IBV_WC_GRH) {
+        puts("GRH exists in payload.");
+        printf("WR ID: %i\n",wc.wr_id);
+        
+        ibv_sge *sge = reinterpret_cast<ibv_sge*>(wc.wr_id);
+        printf("SGE addr: " PRId64 ", Data addr: %i, length: %i\n", reinterpret_cast<uint64_t>(sge), sge->addr, wc.byte_len);
+
+        char *data;
+        auto p = reinterpret_cast<void*>(sge->addr + GRH_SIZE);
+        memcpy(data, p, wc.byte_len);
+        printf("SGE message: %s\n", data);
+
+    }
+
+}
+
+
+void RdmaHandler::handle_sr(){
+
+    printf("WC: sent %i bytes\n", wc.byte_len);
+
+}
+
+
+void RdmaHandler::handle_wc() {
+
+    puts("handling WC.");
+
+    switch (wc.opcode) {
+
+        case IBV_WC_SEND :
+            handle_sr();
+            break;
+
+        case IBV_WC_RECV :
+            handle_rr();
+            break;
+
+        default : 
+            puts("got wrong WC opcode");
+            break;
+
+    }
+
+
+}
+
 
 
 

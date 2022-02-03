@@ -109,7 +109,7 @@ public:
 	RdmaHandler(char*);
 	app_context* get_app_context();
 	app_dest* get_local_dest();
-	// void poll_complition();
+	void poll_complition();
 	void create_send_request(const char *data, size_t len, app_dest *dest);
 };
 

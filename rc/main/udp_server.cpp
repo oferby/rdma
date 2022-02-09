@@ -154,6 +154,7 @@ void ConnectionServer::set_hello_msg(app_dest *dest) {
 void ConnectionServer::add_neighbor(sockaddr_in *clientaddr, socklen_t *clientaddr_len, app_dest *rem_dest) {
     
     if (neighbor_map.count(clientaddr->sin_addr.s_addr)  == 0 ) {
+        
         puts("adding new addr");
         
         neighbor n = {
@@ -164,24 +165,7 @@ void ConnectionServer::add_neighbor(sockaddr_in *clientaddr, socklen_t *clientad
 
         neighbor_map[clientaddr->sin_addr.s_addr] = n;
 
-        app_context *ctx = rdmaHandler->get_app_context();
-
-        ibv_ah_attr ah_attr;
-        ah_attr.dlid = rem_dest->lid;
-        ah_attr.sl = 0;
-        ah_attr.src_path_bits = 0;
-        ah_attr.port_num = PORT_NUM;
-        ah_attr.is_global = 1;
-        ah_attr.grh.dgid = *(rem_dest->gid);
-        ah_attr.grh.hop_limit = 1;
-        ah_attr.grh.sgid_index = GID_IDX;
-
-        ibv_ah *ah = ibv_create_ah(ctx->pd, &ah_attr);
-        if (!ah) {
-            perror("error creating AH.");
-        }
-
-        n.dest->ah = ah;
+        rdmaHandler->set_dest(rem_dest);
 
         puts("remote address added.");
 

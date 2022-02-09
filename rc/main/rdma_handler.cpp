@@ -194,6 +194,8 @@ void RdmaHandler::create_queue_pair() {
 
     puts("QP created.");
 
+    switch_to_init();
+
 }
 
 void RdmaHandler::create_local_dest() {
@@ -219,27 +221,101 @@ app_dest* RdmaHandler::get_local_dest() {
 }
 
 
-// void RdmaHandler::do_qp_change(ibv_qp* qp, ibv_qp_attr *attr, int state, char *mode) {
+void RdmaHandler::do_qp_change(ibv_qp* qp, ibv_qp_attr *attr, int state, char *mode) {
 
-//     auto status = ibv_modify_qp(qp, attr, state);
+    auto status = ibv_modify_qp(qp, attr, state);
 
-//     if (status == 0)
-//         printf("QP changed to %s\n", mode);
-//     else if (status == EINVAL)
-//         printf("Invalid value provided in attr or in attr_mask for mode %s\n", mode);
-//     else if (status == ENOMEM)
-//         printf("Not enough resources to complete this operation for mode %s\n", mode);
-//     else
-//         printf("QP modify status: %i for mode %s\n",status, mode);
+    if (status == 0)
+        printf("QP changed to %s\n", mode);
+    else if (status == EINVAL)
+        printf("Invalid value provided in attr or in attr_mask for mode %s\n", mode);
+    else if (status == ENOMEM)
+        printf("Not enough resources to complete this operation for mode %s\n", mode);
+    else
+        printf("QP modify status: %i for mode %s\n",status, mode);
 
-//     if (status != 0)
-//         exit(EXIT_FAILURE);
+    if (status != 0)
+        exit(EXIT_FAILURE);
 
-// }
-
-
+}
 
 
+void RdmaHandler::set_dest(app_dest* dest) {
+    
+	ibv_qp_attr attr = {};
+    attr.qp_state		= IBV_QPS_RTR;
+    attr.path_mtu		= IBV_MTU_512;
+    attr.dest_qp_num		= dest->qpn;
+    attr.rq_psn			= dest->psn;
+    attr.max_dest_rd_atomic	= 1;
+    attr.min_rnr_timer		= 12;
+    
+    attr.ah_attr.dlid		= dest->lid;
+    attr.ah_attr.sl		= 0;
+    attr.ah_attr.src_path_bits	= 0;
+    attr.ah_attr.port_num	= PORT_NUM;
+
+    attr.ah_attr.is_global = 1;
+    attr.ah_attr.grh.hop_limit = 1;
+    attr.ah_attr.grh.dgid = *(dest->gid);
+    attr.ah_attr.grh.sgid_index = GID_IDX;
+
+	if (ibv_modify_qp(app_ctx->qp, &attr,
+			  IBV_QP_STATE              |
+			  IBV_QP_AV                 |
+			  IBV_QP_PATH_MTU           |
+			  IBV_QP_DEST_QPN           |
+			  IBV_QP_RQ_PSN             |
+			  IBV_QP_MAX_DEST_RD_ATOMIC |
+			  IBV_QP_MIN_RNR_TIMER)) {
+		fprintf(stderr, "Failed to modify QP to RTR\n");
+		exit(EXIT_FAILURE);
+	}
+
+    // switch_to_rts();
+    
+
+    attr.qp_state	    = IBV_QPS_RTS;
+	attr.timeout	    = 14;
+	attr.retry_cnt	    = 7;
+	attr.rnr_retry	    = 7;
+	attr.sq_psn	    = 0;
+	attr.max_rd_atomic  = 1;
+	
+    if (ibv_modify_qp(app_ctx->qp, &attr,
+			  IBV_QP_STATE              |
+			  IBV_QP_TIMEOUT            |
+			  IBV_QP_RETRY_CNT          |
+			  IBV_QP_RNR_RETRY          |
+			  IBV_QP_SQ_PSN             |
+			  IBV_QP_MAX_QP_RD_ATOMIC)) {
+  
+            fprintf(stderr, "Failed to modify QP to RTS\n");
+            exit(EXIT_FAILURE);
+	}
+
+    puts("QP ready.");
+    printf("port state: %i\n", app_ctx->portinfo->state);
+
+}
+
+
+void RdmaHandler::switch_to_init() {
+
+    ibv_qp_attr attr = {};
+    attr.qp_state        = IBV_QPS_INIT;
+    attr.pkey_index      = 0;
+    attr.port_num        = PORT_NUM;
+    attr.qp_access_flags = 0;
+
+    int state = IBV_QP_STATE              |
+                IBV_QP_PKEY_INDEX         |
+                IBV_QP_PORT               |
+                IBV_QP_ACCESS_FLAGS;  
+
+    do_qp_change(app_ctx->qp, &attr, state, (char*) "INIT");
+
+} 
 
 void RdmaHandler::poll_complition() {
 
@@ -263,7 +339,6 @@ void RdmaHandler::poll_complition() {
 }
 
 
-
 void RdmaHandler::handle_rr() {
     
     printf("WC: received %i\n",wc.byte_len);
@@ -273,7 +348,7 @@ void RdmaHandler::handle_rr() {
         printf("WR ID: %i\n",wc.wr_id);
         
         ibv_sge *sge = reinterpret_cast<ibv_sge*>(wc.wr_id);
-        printf("SGE addr: " PRId64 ", Data addr: %i, length: %i\n", reinterpret_cast<uint64_t>(sge), sge->addr, wc.byte_len);
+        printf("SGE addr: " PRId64 ", Data addr: " PRId64 ", length: " PRId32 "\n", reinterpret_cast<uint64_t>(sge), sge->addr, wc.byte_len);
 
         char *data;
         auto p = reinterpret_cast<void*>(sge->addr + GRH_SIZE);
@@ -314,10 +389,6 @@ void RdmaHandler::handle_wc() {
 
 
 }
-
-
-
-
 
 
 void RdmaHandler::cleanup() {

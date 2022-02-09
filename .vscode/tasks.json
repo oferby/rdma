@@ -8,6 +8,8 @@
                 "-fdiagnostics-color=always",
                 "-g",
                 "${file}",
+                "rdma_handler.cpp",
+                "udp_server.cpp",
                 "-o",
                 "${fileDirname}/${fileBasenameNoExtension}",
                 "-libverbs"

@@ -24,7 +24,8 @@
 #define QKEY 0x11111111
 #define GID_IDX 1
 #define IB_PORT 1
-#define MSG_SIZE 1500
+#define MTU 1500
+#define MSG_SIZE 1024
 #define GRH_SIZE 40
 #define CQ_SIZE 10
 #define MAX_WR 10
@@ -83,25 +84,16 @@ private:
     ibv_wc wc;
 
 	void setup_context();
-
 	void create_srq();
-
 	void setup_memory();
-
 	void create_local_dest();
-
 	void create_queue_pair();
-
+	void switch_to_init();
 	void do_qp_change(ibv_qp* qp, ibv_qp_attr *attr, int state, char *mode); 
-
     void changeQueuePairState(app_context *app_ctx); 
-
     void handle_rr();
-
     void handle_sr();
-
     void handle_wc();
-
 	void cleanup();
 
 public:
@@ -109,8 +101,9 @@ public:
 	RdmaHandler(char*);
 	app_context* get_app_context();
 	app_dest* get_local_dest();
+	void set_dest(app_dest* dest);
 	void poll_complition();
-	void create_send_request(const char *data, size_t len, app_dest *dest);
+	void send_to_dest(const char *data, size_t len);
 };
 
 static void print_gid(const union ibv_gid *gid) {

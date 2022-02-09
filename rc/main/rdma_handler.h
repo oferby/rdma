@@ -48,8 +48,8 @@ struct app_context {
     char         *devname;
    
     uint64_t wid = 0;
-    std::map <uint64_t,ibv_sge*> *sge_map;
-    std::vector<ibv_sge*> *available_send_sge_vector;
+    // std::map <uint64_t,ibv_sge*> *sge_map;
+    // std::vector<ibv_sge*> *available_send_sge_vector;
 
 };
 
@@ -104,6 +104,7 @@ public:
 	void set_dest(app_dest* dest);
 	void poll_complition();
 	void send_to_dest(const char *data, size_t len);
+	bool is_ready();
 };
 
 static void print_gid(const union ibv_gid *gid) {

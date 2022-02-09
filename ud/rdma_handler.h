@@ -3,6 +3,16 @@
 #include <endian.h>
 #include <map>
 #include <vector>
+#include <stdio.h>
+#include <unistd.h>
+#include <stdexcept>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/time.h>
+#include <malloc.h>
+#include <getopt.h>
+#include <time.h>
+#include <arpa/inet.h>
 
 #ifndef RDMA_HANDLER 
 
@@ -98,13 +108,12 @@ public:
 };
 
 
-void print_gid(const union ibv_gid *gid) {
+static void print_gid(const union ibv_gid *gid) {
 		static char gid_tmp[33];
         inet_ntop(AF_INET6, gid, gid_tmp, INET6_ADDRSTRLEN);
 	    printf(" ** GID %s\n", gid_tmp);
 
 }
-
 
 
 static void wire_gid_to_gid(const char *wgid, union ibv_gid *gid) { 
@@ -123,6 +132,7 @@ static void wire_gid_to_gid(const char *wgid, union ibv_gid *gid) {
 
 }
 
+
 static void gid_to_wire_gid(const union ibv_gid *gid, char wgid[]) {
 
 	uint32_t tmp_gid[4];
@@ -135,7 +145,7 @@ static void gid_to_wire_gid(const union ibv_gid *gid, char wgid[]) {
 }
 
 
-void print_dest(struct app_dest * dest) {
+static void print_dest(struct app_dest * dest) {
 		static char gid[33];
         inet_ntop(AF_INET6, dest->gid, gid, sizeof gid);
 	    printf("  address:  LID 0x%04x, QPN 0x%06x, PSN 0x%06x: GID %s\n",

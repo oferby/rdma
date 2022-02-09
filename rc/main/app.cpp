@@ -40,16 +40,16 @@ int main(int argc, char* argv[]) {
         conn_server.handle_events();
         rdmaHandler.poll_complition();
 
-        // if (initiator & !sent & conn_server.get_app_dest() != nullptr ) {
+        if (!sent & initiator & rdmaHandler.is_ready() ) {
             
-        //     puts("sending SR.");
-        //     neighbor *n = conn_server.get_app_dest();
-        //     std::string data = "this is a message!";
-        //     rdmaHandler.create_send_request(data.c_str(), data.length(), n->dest);
+            puts("sending SR.");
+            neighbor *n = conn_server.get_app_dest();
+            std::string data = "this is a message!";
+            rdmaHandler.send_to_dest(data.c_str(), data.length());
 
-        //     sent = true;
+            sent = true;
 
-        // }
+        }
 
     }
 

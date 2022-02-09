@@ -1,17 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <stdexcept>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/time.h>
-#include <malloc.h>
-#include <getopt.h>
-#include <time.h>
-#include <arpa/inet.h>
-#include <map>
-#include <vector>
-
 #include "rdma_handler.h"
 
 using namespace std;
@@ -296,9 +282,9 @@ void RdmaHandler::handle_rr() {
         ibv_sge *sge = reinterpret_cast<ibv_sge*>(wc.wr_id);
         printf("SGE addr: %i, Data addr: %i, length: %i\n", reinterpret_cast<uint64_t>(sge), sge->addr, wc.byte_len);
 
-        char *data;
-        auto p = reinterpret_cast<void*>(sge->addr + GRH_SIZE);
-        memcpy(data, p, wc.byte_len);
+        char *data = (char*) malloc(wc.byte_len - GRH_SIZE);
+        char *p = reinterpret_cast<char*>(sge->addr + GRH_SIZE);
+        memcpy(data, p, wc.byte_len - GRH_SIZE);
         printf("SGE message: %s\n", data);
 
     }

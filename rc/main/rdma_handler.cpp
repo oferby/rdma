@@ -7,8 +7,8 @@ using namespace std;
 RdmaHandler::RdmaHandler(char *devname) {
         
         app_ctx = new app_context();
-        app_ctx->sge_map = &sge_map;
-        app_ctx->available_send_sge_vector = &available_send_sge_vector;
+        // app_ctx->sge_map = &sge_map;
+        // app_ctx->available_send_sge_vector = &available_send_sge_vector;
         app_ctx->devname = devname;
         
         setup_context();
@@ -132,13 +132,15 @@ void RdmaHandler::setup_memory() {
 
     uint64_t mem_addr = reinterpret_cast<uint64_t>(app_ctx->buf);
 
+    // SGE for send requests
     ibv_sge *sge = (ibv_sge*) calloc(1, sizeof sge);
     sge->addr = mem_addr;
     sge->length = 0;
     sge->lkey = app_ctx->mr->lkey;
 
-    app_ctx->available_send_sge_vector->push_back(sge);
+    this->available_send_sge_vector.push_back(sge);
 
+    // SGE for receive requests
     for (int i = 0; i < 2; i++) {
 
         mem_addr += msg_size;
@@ -220,7 +222,6 @@ app_dest* RdmaHandler::get_local_dest() {
     return local_dest;
 }
 
-
 void RdmaHandler::do_qp_change(ibv_qp* qp, ibv_qp_attr *attr, int state, char *mode) {
 
     auto status = ibv_modify_qp(qp, attr, state);
@@ -238,7 +239,6 @@ void RdmaHandler::do_qp_change(ibv_qp* qp, ibv_qp_attr *attr, int state, char *m
         exit(EXIT_FAILURE);
 
 }
-
 
 void RdmaHandler::set_dest(app_dest* dest) {
     
@@ -299,7 +299,6 @@ void RdmaHandler::set_dest(app_dest* dest) {
 
 }
 
-
 void RdmaHandler::switch_to_init() {
 
     ibv_qp_attr attr = {};
@@ -327,8 +326,9 @@ void RdmaHandler::poll_complition() {
         }
 
         if (status > 0) {
-            printf("wid: " PRId64 ", opcode: %i\n", wc.wr_id, wc.opcode);
+            puts("got new WC event.");
             if(wc.status == ibv_wc_status::IBV_WC_SUCCESS) {
+                printf("wid: " PRId64 ", opcode: %i\n", wc.wr_id, wc.opcode);
                 handle_wc();
             } else {
                 puts("got error processing WC.");
@@ -337,7 +337,6 @@ void RdmaHandler::poll_complition() {
         }
 
 }
-
 
 void RdmaHandler::handle_rr() {
     
@@ -348,7 +347,10 @@ void RdmaHandler::handle_rr() {
         printf("WR ID: %i\n",wc.wr_id);
         
         ibv_sge *sge = reinterpret_cast<ibv_sge*>(wc.wr_id);
-        printf("SGE addr: " PRId64 ", Data addr: " PRId64 ", length: " PRId32 "\n", reinterpret_cast<uint64_t>(sge), sge->addr, wc.byte_len);
+        printf("SGE addr: " PRId64 ", Data addr: " PRId64 ", length: " PRId32 "\n", 
+            reinterpret_cast<uint64_t>(sge), 
+            sge->addr, 
+            wc.byte_len);
 
         char *data;
         auto p = reinterpret_cast<void*>(sge->addr + GRH_SIZE);
@@ -359,13 +361,11 @@ void RdmaHandler::handle_rr() {
 
 }
 
-
 void RdmaHandler::handle_sr(){
 
     printf("WC: sent %i bytes\n", wc.byte_len);
 
 }
-
 
 void RdmaHandler::handle_wc() {
 
@@ -390,6 +390,54 @@ void RdmaHandler::handle_wc() {
 
 }
 
+void RdmaHandler::send_to_dest(const char *data, size_t len) {
+    
+    if (available_send_sge_vector.empty()) {
+        puts("there is no SGE available to SR.");
+        return;
+    }
+
+    puts("creating send request");
+
+    ibv_sge *sge = available_send_sge_vector.back();
+    available_send_sge_vector.pop_back();
+
+    auto p = reinterpret_cast<void*>(sge->addr);
+    memcpy(p, data, len);
+    sge->length = len;
+
+    ibv_send_wr *send_wr = new ibv_send_wr();
+    send_wr->wr_id = reinterpret_cast<uint64_t>(sge);
+    send_wr->sg_list = sge;
+    send_wr->num_sge = 1;
+    send_wr->opcode = IBV_WR_SEND;
+    send_wr->send_flags = IBV_SEND_SIGNALED ;
+
+    ibv_send_wr *bad_wr;
+
+    status = ibv_post_send(app_ctx->qp, send_wr, &bad_wr);
+    if(status) {
+        perror("error posting send request");
+    }
+
+    puts("posted send request.");
+}
+
+bool RdmaHandler::is_ready() {
+
+    ibv_qp_attr attr;
+    ibv_qp_init_attr init_attr;
+ 
+    if (ibv_query_qp(app_ctx->qp, &attr, IBV_QP_STATE, &init_attr)) {
+	    fprintf(stderr, "Failed to query QP state\n");
+	    exit(EXIT_FAILURE);
+    }
+
+    if (attr.qp_state == IBV_QPS_RTS)
+        return true;
+    return false;
+
+}
 
 void RdmaHandler::cleanup() {
 

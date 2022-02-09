@@ -352,9 +352,9 @@ void RdmaHandler::handle_rr() {
             sge->addr, 
             wc.byte_len);
 
-        char *data;
-        auto p = reinterpret_cast<void*>(sge->addr + GRH_SIZE);
-        memcpy(data, p, wc.byte_len);
+        char *data = (char*) malloc(wc.byte_len - GRH_SIZE) ;
+        auto p = reinterpret_cast<char*>(sge->addr + GRH_SIZE);
+        memcpy(data, p, wc.byte_len - GRH_SIZE);
         printf("SGE message: %s\n", data);
 
     }

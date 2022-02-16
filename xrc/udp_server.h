@@ -18,6 +18,16 @@
 #define MAX_EVENTS 10
 #define PORT 8585
 
+#define MSG_FORMAT "%04x:%06x:%06x:%06x:%06x:%32s"
+#define MSG_SIZE   66
+#define MSG_SSCAN  "%x:%x:%x:%x:%x:%s"
+
+#define TERMINATION_FORMAT "%s"
+#define TERMINATION_MSG_SIZE 4
+#define TERMINATION_MSG "END"
+static int page_size;
+static int use_odp;
+
 
 class ConnectionServer {
 
@@ -32,37 +42,10 @@ class ConnectionServer {
         int nfds, epollfd, status, sd;
         struct epoll_event ev, events[MAX_EVENTS];
 
-        app_dest *local_dest;    
-        char *hello_msg;
-        ssize_t msg_size;
-
-        static char* get_hello_msg(app_dest *dest) {
-
-            char *msg = (char*) malloc(sizeof "0000:000000:000000:00000000000000000000000000000000");
-
-            // char gid[33];
-            // gid_to_wire_gid(dest->gid, gid);
-            // sprintf(msg, "%04x:%06x:%06x:%s", dest->lid, dest->qpn,
-            //                 dest->psn, gid);
-            return msg;
-
-        }
-
-        static void get_dest(char *msg, app_dest *rem_dest) {
-
-            // char tmp_gid[33];
-            // sscanf(msg, "%x:%x:%x:%s", &rem_dest->lid, &rem_dest->qpn,
-            //                         &rem_dest->psn, tmp_gid);
-
-            // rem_dest->gid = new ibv_gid;
-            // wire_gid_to_gid(tmp_gid, rem_dest->gid);
-
-        }
-        
+        char* get_hello_msg(app_dest *dest); 
+        app_dest* get_dest(char *msg);
         void add_neighbor(sockaddr_in *clientaddr, socklen_t *clientaddr_len, app_dest *rem_dest);
-
         void check_sending_hello(sockaddr_in *clientaddr, socklen_t *clientaddr_len);
-
         void set_hello_msg(app_dest *dest);
 
 
@@ -71,12 +54,12 @@ class ConnectionServer {
         ConnectionServer(char *ip_addr);
         void set_rdma_handler(RdmaHandler *handler); 
         void start(); 
+        void poll_events();
         void server_receive_event();
-        void handle_events(); 
-        void send_hello(char *dest); 
-        void send_hello(sockaddr_in *dest, socklen_t *clientaddr_len); 
-        neighbor* get_app_dest(const char *addr); 
-        neighbor* get_app_dest(); 
+        // void send_hello(char *dest); 
+        // void send_hello(sockaddr_in *dest, socklen_t *clientaddr_len); 
+        // neighbor* get_app_dest(const char *addr); 
+        // neighbor* get_app_dest(); 
 
 };
 

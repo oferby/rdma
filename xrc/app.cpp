@@ -17,12 +17,12 @@ int main(int argc, char* argv[]) {
     if (argc < 3) 
         print_usage_and_exit();    
 
-    // ConnectionServer conn_server {argv[2]};    
+    ConnectionServer conn_server {argv[2]};    
     RdmaHandler rdmaHandler {argv[1]};
 
-    // conn_server.set_rdma_handler(&rdmaHandler);
+    conn_server.set_rdma_handler(&rdmaHandler);
 
-    // conn_server.start();
+    conn_server.start();
 
     // if (argc > 3 && strcmp(argv[3],"-s") == 0) {
     //     if (argc == 5) {
@@ -35,9 +35,9 @@ int main(int argc, char* argv[]) {
         
     // }
 
-    // while (1)
-    // {
-    //     conn_server.handle_events();
+    while (1)
+    {
+        conn_server.poll_events();
     //     rdmaHandler.poll_complition();
 
     //     if (!sent & initiator & rdmaHandler.is_ready() ) {
@@ -51,6 +51,6 @@ int main(int argc, char* argv[]) {
 
     //     }
 
-    // }
+    }
 
 }

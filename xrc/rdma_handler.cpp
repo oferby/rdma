@@ -9,6 +9,8 @@ RdmaHandler::RdmaHandler(char *devname) {
         setup_context();
         setup_memory();
         setup_xrc();
+        create_qps();
+        post_recv();
         // create_queue_pair();
         // create_local_dest();
 
@@ -83,7 +85,7 @@ void RdmaHandler::setup_memory() {
     
     puts("setting up memory.");
 
-    int mr_size =  ( MSG_SIZE + GRH_SIZE ) * MAX_WR;
+    int mr_size =  ( RDMA_MSG_SIZE + GRH_SIZE ) * MAX_WR;
     int alignment = sysconf(_SC_PAGESIZE);
     app_ctx->buf = (char*) memalign(alignment, mr_size);
 
@@ -104,9 +106,10 @@ void RdmaHandler::setup_memory() {
 
 }
 
+
 void RdmaHandler::post_recv() {
 
-  uint32_t msg_size = MSG_SIZE + GRH_SIZE;
+  uint32_t msg_size = RDMA_MSG_SIZE + GRH_SIZE;
 
     uint64_t mem_addr = reinterpret_cast<uint64_t>(app_ctx->buf);
 
@@ -148,14 +151,147 @@ void RdmaHandler::post_recv() {
 }
 
 
-
-
 void RdmaHandler::setup_xrc() {
 
+	ibv_srq_init_attr_ex attr {0};
+	ibv_xrcd_init_attr xrcd_attr {0};
+	ibv_port_attr port_attr;
+	int access_flags = IBV_ACCESS_LOCAL_WRITE;
 
+    // app_ctx->num_clients
+    app_ctx->recv_qp = new ibv_qp*[1];
+    app_ctx->send_qp = new ibv_qp*[1];
+    app_ctx->rem_dest = new app_dest;
 
+	if (!app_ctx->recv_qp || !app_ctx->send_qp || !app_ctx->rem_dest) {
+        puts("error allocating QP structure");
+        exit(EXIT_FAILURE);
+    }
+
+    puts("Creating XRC Domain");
+
+    app_ctx->fd = open("/tmp/xrc_domain", O_RDONLY | O_CREAT, S_IRUSR | S_IRGRP);
+	if (app_ctx->fd < 0) {
+		fprintf(stderr,
+			"Couldn't create the file for the XRC Domain "
+			"but not stopping %d\n", errno);
+		app_ctx->fd = -1;
+	}
+
+    xrcd_attr.comp_mask = IBV_XRCD_INIT_ATTR_FD | IBV_XRCD_INIT_ATTR_OFLAGS;
+	xrcd_attr.fd = app_ctx->fd;
+	xrcd_attr.oflags = O_CREAT;
+	app_ctx->xrcd = ibv_open_xrcd(app_ctx->ctx, &xrcd_attr);
+	if (!app_ctx->xrcd) {
+		fprintf(stderr, "Couldn't Open the XRC Domain %d\n", errno);
+        exit(EXIT_FAILURE);
+	}
+
+    puts("Create CQ");
+    // ctx.num_clients 
+	app_ctx->recv_cq = ibv_create_cq(app_ctx->ctx, 1, &app_ctx->recv_cq,
+				    app_ctx->channel, 0);
+	if (!app_ctx->recv_cq) {
+		fprintf(stderr, "Couldn't create recv CQ\n");
+		exit(EXIT_FAILURE);
+	}
+
+    // ctx.num_clients
+	app_ctx->send_cq = ibv_create_cq(app_ctx->ctx, 1, NULL, NULL, 0);
+	if (!app_ctx->send_cq) {
+		fprintf(stderr, "Couldn't create send CQ\n");
+		exit(EXIT_FAILURE);
+	}
+
+    puts("Create SRQ.");
+    // ctx.num_clients
+	attr.attr.max_wr = 1;
+	attr.attr.max_sge = 1;
+	attr.comp_mask = IBV_SRQ_INIT_ATTR_TYPE | IBV_SRQ_INIT_ATTR_XRCD |
+			 IBV_SRQ_INIT_ATTR_CQ | IBV_SRQ_INIT_ATTR_PD;
+	attr.srq_type = IBV_SRQT_XRC;
+	attr.xrcd = app_ctx->xrcd;
+	attr.cq = app_ctx->recv_cq;
+	attr.pd = app_ctx->pd;
+
+	app_ctx->srq = ibv_create_srq_ex(app_ctx->ctx, &attr);
+	if (!app_ctx->srq)  {
+		fprintf(stderr, "Couldn't create SRQ\n");
+		exit(EXIT_FAILURE);
+	}
+
+    
 
 }
+
+
+void RdmaHandler::create_qps() {
+
+    ibv_qp_init_attr_ex init {0};
+	ibv_qp_attr mod;
+
+    puts("setting up receive QPs");
+
+    init.qp_type = IBV_QPT_XRC_RECV;
+    init.comp_mask = IBV_QP_INIT_ATTR_XRCD;
+    init.xrcd = app_ctx->xrcd;
+
+    
+    app_ctx->recv_qp[0] = ibv_create_qp_ex(app_ctx->ctx, &init);
+    if (!app_ctx->recv_qp[0])  {
+        fprintf(stderr, "Couldn't create recv QP[%d] errno %d\n",
+            0, errno);
+        exit(EXIT_FAILURE);
+    }
+
+    mod.qp_state        = IBV_QPS_INIT;
+    mod.pkey_index      = 0;
+    mod.port_num        = IB_PORT;
+    mod.qp_access_flags = IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_READ;
+
+    if (ibv_modify_qp(app_ctx->recv_qp[0], &mod,
+                IBV_QP_STATE | IBV_QP_PKEY_INDEX |
+                IBV_QP_PORT | IBV_QP_ACCESS_FLAGS)) {
+        fprintf(stderr, "Failed to modify recv QP[%d] to INIT\n", 0);
+        exit(EXIT_FAILURE);
+    }
+
+    puts("setting up send QPs");
+
+    memset(&init, 0, sizeof init);
+    init.qp_type	      = IBV_QPT_XRC_SEND;
+    init.send_cq	      = app_ctx->send_cq;
+    // ctx.num_clients * ctx.num_tests;
+    init.cap.max_send_wr  = 1;
+    init.cap.max_send_sge = 1;
+    init.comp_mask	      = IBV_QP_INIT_ATTR_PD;
+    init.pd		      = app_ctx->pd;
+
+    app_ctx->send_qp[0] = ibv_create_qp_ex(app_ctx->ctx, &init);
+    if (!app_ctx->send_qp[0])  {
+        fprintf(stderr, "Couldn't create send QP[%d] errno %d\n",
+            0, errno);
+        exit(EXIT_FAILURE);
+    }
+    
+    
+    mod.qp_state        = IBV_QPS_INIT;
+    mod.pkey_index      = 0;
+    mod.port_num        = IB_PORT;
+    mod.qp_access_flags = 0;
+
+    if (ibv_modify_qp(app_ctx->send_qp[0], &mod,
+                IBV_QP_STATE | IBV_QP_PKEY_INDEX |
+                IBV_QP_PORT | IBV_QP_ACCESS_FLAGS)) {
+        fprintf(stderr, "Failed to modify send QP[%d] to INIT\n", 0);
+        exit(EXIT_FAILURE);
+    }
+
+    puts("QPs created.");
+
+}
+
+
 
 void RdmaHandler::cleanup() {
 

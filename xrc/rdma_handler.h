@@ -18,17 +18,9 @@
 #include <time.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <fcntl.h>
 
-#define MSG_FORMAT "%04x:%06x:%06x:%06x:%06x:%32s"
-#define MSG_SIZE   1024
-#define MSG_SSCAN  "%x:%x:%x:%x:%x:%s"
-#define ADDR_FORMAT \
-	"%8s: LID %04x, QPN RECV %06x SEND %06x, PSN %06x, SRQN %06x, GID %s\n"
-#define TERMINATION_FORMAT "%s"
-#define TERMINATION_MSG_SIZE 4
-#define TERMINATION_MSG "END"
-static int page_size;
-static int use_odp;
+
 
 #define PORT_NUM 1
 #define QKEY 0x11111111
@@ -40,6 +32,9 @@ static int use_odp;
 #define MAX_WR 10
 #define MAX_SGE 1
 #define MAX_QP 1024
+#define ADDR_FORMAT \
+	"%8s: LID %04x, QPN RECV %06x SEND %06x, PSN %06x, SRQN %06x, GID %s\n"
+#define RDMA_MSG_SIZE   66
 
 struct app_dest {
 	ibv_gid gid;
@@ -64,7 +59,7 @@ struct app_context {
 	struct ibv_xrcd		*xrcd;
 	struct ibv_qp		**recv_qp;
 	struct ibv_qp		**send_qp;
-	struct app_dest	*rem_dest;
+	struct app_dest		*rem_dest;
 	void			*buf;
 	int			 lid;
 	int			 sl;
@@ -107,8 +102,8 @@ private:
 	void setup_memory();
 	void post_recv();
 	void setup_xrc();
+	void create_qps();
 	// void create_local_dest();
-	// void create_queue_pair();
 	// void switch_to_init();
 	// void do_qp_change(ibv_qp* qp, ibv_qp_attr *attr, int state, char *mode); 
     // void changeQueuePairState(app_context *app_ctx); 

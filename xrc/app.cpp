@@ -24,16 +24,16 @@ int main(int argc, char* argv[]) {
 
     conn_server.start();
 
-    // if (argc > 3 && strcmp(argv[3],"-s") == 0) {
-    //     if (argc == 5) {
-    //         conn_server.send_hello(argv[4]);
-    //         initiator = true;
-    //     } else {
-    //         print_usage_and_exit();
+    if (argc > 3 && strcmp(argv[3],"-s") == 0) {
+        if (argc == 5) {
+            conn_server.send_hello(argv[4]);
+            initiator = true;
+        } else {
+            print_usage_and_exit();
             
-    //     }
+        }
         
-    // }
+    }
 
     while (1)
     {

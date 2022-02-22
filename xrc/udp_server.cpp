@@ -11,9 +11,9 @@ void ConnectionServer::set_rdma_handler(RdmaHandler *handler) {
 
 void ConnectionServer::start() {
 
-    sd = socket(AF_INET, SOCK_DGRAM, 0);
+    listen_sock = socket(AF_INET, SOCK_STREAM, 0);
 
-    if ( sd == -1 ) {
+    if ( listen_sock == -1 ) {
         fprintf(stderr, "Could not create a socket!\n");
         exit(1);
     }
@@ -27,7 +27,7 @@ void ConnectionServer::start() {
     simpleServer.sin_addr.s_addr = inet_addr(local_addr.c_str());    //INADDR_ANY;
     simpleServer.sin_port = htons(PORT);
 
-    int status = bind(sd, (struct sockaddr *) &simpleServer, addresslen);
+    int status = bind(listen_sock, (struct sockaddr *) &simpleServer, addresslen);
     if ( status != 0 ) {
         fprintf(stderr, "Could not bind socket!\n");
         exit(1);    
@@ -35,6 +35,13 @@ void ConnectionServer::start() {
 
     puts("Socket binded!");
 
+    status = listen(listen_sock, 5);
+    if ( status != 0 ) {
+        fprintf(stderr, "Could not listen on socket!\n");
+        exit(1);    
+    }
+
+    puts("listen on socket.");
 
     // create epoll fd
     epollfd = epoll_create1(0);
@@ -44,15 +51,9 @@ void ConnectionServer::start() {
 
     }
 
-    ev.events = EPOLLIN;
-    ev.data.fd = sd;
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, sd, &ev) == -1 ) {
-        perror("could not add listen socket to epoll.");
-        exit(EXIT_FAILURE);
-    }
+    epoll_ctl_add(epollfd, listen_sock, EPOLLIN);
 
     puts("listen socket added to epoll list.");
-
 
 };
 
@@ -64,14 +65,132 @@ void ConnectionServer::poll_events() {
         exit(EXIT_FAILURE);
     } else if (nfds > 0) {
         puts("got socket event.");
-        server_receive_event();
+        server_receive_event(nfds);
     }
-    
 
 };
 
 
-void ConnectionServer::server_receive_event() {
+void ConnectionServer::server_receive_event(int nfds) {
+
+    sockaddr_in cli_addr;
+	int conn_sock;
+	socklen_t socklen = sizeof(cli_addr);
+	
+    
+    for (int i = 0; i < nfds; i++) { 
+        
+        if (events[i].data.fd == listen_sock) {
+				/* handle new connection */
+
+				conn_sock =
+				    accept(listen_sock,
+					   (struct sockaddr *)&cli_addr,
+					   &socklen);
+                
+                char buf[16];
+
+				inet_ntop(AF_INET, (char *)&(cli_addr.sin_addr),
+					  buf, sizeof(cli_addr));
+
+				printf("[+] connected with %s:%d\n", buf,
+				       ntohs(cli_addr.sin_port));
+
+				setnonblocking(conn_sock);
+
+				epoll_ctl_add(epollfd, conn_sock,
+					      EPOLLIN | EPOLLET | EPOLLRDHUP |
+					      EPOLLHUP);
+
+
+                
+        } else if (events[i].events & EPOLLIN) {
+            /* handle EPOLLIN event */    
+            recv_hello(events[i].data.fd);
+
+        } else {
+            printf("[+] unexpected\n");
+        }
+    
+    }
+
+};
+
+void ConnectionServer::send_hello(char *dest) {
+
+    printf("sending first hello message to %s\n", dest);
+
+    int result;
+
+    sockaddr_in servaddr;
+    bzero(&servaddr,sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr(dest);
+    servaddr.sin_port = htons(PORT);
+    socklen_t sock_len = sizeof(struct sockaddr);
+
+    int sd = socket(AF_INET, SOCK_DGRAM, 0);
+
+    result = connect(sd, (sockaddr*) &servaddr, sock_len);
+    if (result == -1) {
+        printf("could not connect to %s", dest);
+        exit(EXIT_FAILURE);
+    }
+
+    epoll_ctl_add(epollfd, sd, EPOLLIN);
+    puts("listen socket added to epoll list.");
+
+    char* hello_msg = rdmaHandler->get_hello_msg(&servaddr.sin_addr.s_addr);
+    printf("sending hello to %s\n", dest);
+    send_hello(sd, hello_msg);
+
+}
+
+void ConnectionServer::send_hello(int sd, char* hello_msg) {
+    
+    status = send(sd, hello_msg, MSG_SIZE, 0);
+    if (status < 0) {
+        perror("error sendin hellow message");
+    } else {
+        printf("%i bytes sent.\n", status);
+        pending_hello.insert(sd);
+    }
+
+}
+
+
+void ConnectionServer::recv_hello(int sd) {
+
+    char* buf = new char[MSG_SIZE];
+
+    sockaddr_in addr;
+    bzero(&addr,sizeof(addr));
+    socklen_t sock_len = sizeof(struct sockaddr);
+
+    int result = recvfrom(sd, buf, MSG_SIZE, 0, (sockaddr*) &addr, &sock_len);
+    if (result < 0) {
+        perror("could not receive hello message.");
+        exit(EXIT_FAILURE);
+    }
+
+    char* source = inet_ntoa(addr.sin_addr);
+    printf("receveived %i bytes from %s\n",result, source);
+
+    if (pending_hello.find(sd) == pending_hello.end()) {
+        puts("socket not in pending list. sending hello message");
+        
+        char* msg = rdmaHandler->get_hello_msg(&addr.sin_addr.s_addr);
+        send_hello(sd, msg);
+
+    } else {
+
+        puts("socket in pending list. closing connection.");
+        pending_hello.erase(sd);
+        epoll_ctl_del(epollfd, sd);
+        close(sd);
+
+    }
 
 
 }
+

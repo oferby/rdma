@@ -107,7 +107,6 @@ private:
 
 	void setup_context();
 	void setup_memory();
-	void setup_xrc(ib_connection*);
 	void create_qps(ib_connection*);
 	char* get_local_conn_info(ib_connection* conn);
 	void post_recv();
@@ -122,8 +121,9 @@ private:
 public:
  	
 	RdmaHandler(char* device);
-	char* get_hello_msg(const in_addr_t* clientaddr);
-	int create_ib_connection(const sockaddr_in* client, char* msg);
+	char* get_hello_msg(const in_addr_t* clientaddr, ib_connection* conn);
+	char* get_hello_msg_response(const in_addr_t* clientaddr, char* buf);
+	ib_connection* get_ib_connection(const in_addr_t* clientaddr);
 	void send(const sockaddr_in* client, const char* data, size_t len);
 };
 

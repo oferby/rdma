@@ -35,7 +35,8 @@ class ConnectionServer {
         void server_receive_event(int sd);
         void send_hello(int sd, char* hello_msg); 
         void recv_hello(int sd);
-        char* get_hello_msg(sockaddr_in* clientaddr, char* msg); 
+        char* get_hello_msg(sockaddr_in* clientaddr, char* msg);
+        void close_socket(int sd); 
 
     public:
 

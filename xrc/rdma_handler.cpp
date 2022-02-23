@@ -152,6 +152,14 @@ void RdmaHandler::setup_context() {
 	}
 
 
+    app_ctx->worker->channel = ibv_create_comp_channel(app_ctx->ctx);
+    if (!app_ctx->worker->channel) {
+        perror("Couldn't create completion channel");
+        exit(EXIT_FAILURE);
+    }
+
+    setup_memory();
+
     puts("context setup done.");
 
 }
@@ -219,16 +227,36 @@ void RdmaHandler::setup_memory() {
 
 }
 
-char* RdmaHandler::get_hello_msg(const in_addr_t* clientaddr) {
+char* RdmaHandler::get_hello_msg(const in_addr_t* clientaddr, ib_connection* conn) {
     
-    ib_connection* conn = new ib_connection();
-    qp_map[clientaddr] = conn;
-    setup_xrc(conn);
-    setup_memory();
+    // this side initiate the call   
+    
+    if (conn == nullptr)
+        conn = get_ib_connection(clientaddr);
 
     return get_local_conn_info(conn);
 
 }
+
+char* RdmaHandler::get_hello_msg_response(const in_addr_t* clientaddr, char* buf) {
+
+    // other side initiate the call  
+    
+    ib_connection* conn = get_ib_connection(clientaddr);
+    
+    return get_hello_msg(clientaddr, conn);
+}
+
+
+ib_connection* RdmaHandler::get_ib_connection(const in_addr_t* clientaddr) {
+
+    ib_connection* conn = new ib_connection();
+    qp_map[clientaddr] = conn;
+
+    return conn;
+
+}
+
 
 char* RdmaHandler::get_local_conn_info(ib_connection* conn) {
 
@@ -244,50 +272,6 @@ char* RdmaHandler::get_local_conn_info(ib_connection* conn) {
 		app_ctx->srq_num, gid);
 
     return msg;
-}
-
-
-int RdmaHandler::create_ib_connection(const sockaddr_in* client, char* msg) {
-    
-    puts("got request for XRC connection with msg:\n\t");
-
-    // sscanf(msg, MSG_SSCAN, )
-
-    // printf(ADDR_FORMAT, )
-
-    // ib_connection* conn = new ib_connection;
-    // qp_map[client] = conn;
-
-    // setup_xrc(conn);
-    // create_qps(conn);
-
-    return 0;
-
-};
-
-void RdmaHandler::setup_xrc(ib_connection* conn) {
-
-	ibv_srq_init_attr_ex attr {0};
-	int access_flags = IBV_ACCESS_LOCAL_WRITE;
-
-    app_ctx->worker->channel = ibv_create_comp_channel(app_ctx->ctx);
-    if (!app_ctx->worker->channel) {
-        perror("Couldn't create completion channel");
-        exit(EXIT_FAILURE);
-    }
-
-    // conn->recv_qp = new ibv_qp;
-    // conn->send_qp = new ibv_qp;
-
-	// if (!conn->recv_qp || !conn->send_qp) {
-    //     puts("error allocating QP structure");
-    //     exit(EXIT_FAILURE);
-    // }
-
-
-
-    
-
 }
 
 

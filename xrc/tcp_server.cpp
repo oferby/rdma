@@ -1,4 +1,4 @@
-#include "udp_server.h"
+#include "tcp_server.h"
 
 ConnectionServer::ConnectionServer(char *ip_addr) {
 
@@ -168,11 +168,22 @@ void ConnectionServer::recv_hello(int sd) {
 
     char* buf = new char[MSG_SIZE];
 
-    int result = recv(sd, buf, MSG_SIZE, 0);
-    if (result < 0) {
-        perror("could not receive hello message.");
-        exit(EXIT_FAILURE);
-    }
+    int n = 0, r;
+
+	while (n < MSG_SIZE) {
+		r = read(sd, buf + n, MSG_SIZE - n);
+		if (r < 0) {
+			perror("client read");
+			exit(EXIT_FAILURE);
+		}
+		n += r;
+	}
+
+    // int result = recv(sd, buf, MSG_SIZE, 0);
+    // if (result < 0) {
+    //     perror("could not receive hello message.");
+    //     exit(EXIT_FAILURE);
+    // }
 
     sockaddr_in* addr = new sockaddr_in();
     socklen_t sock_len = sizeof(sockaddr);
@@ -182,15 +193,17 @@ void ConnectionServer::recv_hello(int sd) {
     }
 
     char* source = inet_ntoa(addr->sin_addr);
-    printf("receveived %i bytes from %s\n",result, source);
+    printf("receveived %i bytes from %s\n",n, source);
 
     if (pending_hello.find(sd) == pending_hello.end()) {
+        
         puts("socket not in pending list. sending hello message");
         
         char* msg = rdmaHandler->get_hello_msg_response(&addr->sin_addr.s_addr, buf);
         send_hello(sd, msg);
 
     } else {
+        
 
         puts("socket in pending list. closing connection.");
         close_socket(sd);

@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <stdexcept>
 #include <string.h>
+#include <string>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <malloc.h>
@@ -35,7 +36,7 @@
 #define MAX_QP 1024
 
 #define ADDR_FORMAT \
-	"%8s: LID %04x, QPN RECV %06x SEND %06x, PSN %06x, SRQN %06x, GID %s\n"
+	"%s: LID %04x, QPN RECV %06x SEND %06x, PSN %06x, SRQN %06x, GID %s\n"
 #define MSG_SIZE   66
 #define MSG_FORMAT "%04x:%06x:%06x:%06x:%06x:%32s"
 #define MSG_SSCAN  "%x:%x:%x:%x:%x:%s"
@@ -47,21 +48,30 @@ static int page_size;
 static int use_odp;
 
 
-struct ib_conn_info {
-	int recv_qpn;
-	int send_qpn;
-	int recv_psn;
-	int send_psn;
-	int srqn;
+struct ib_info {
+	int		lid;
+	int 	recv_qpn;
+	int 	send_qpn;
+	int 	recv_psn;
+	int 	send_psn;
+	int 	srqn;
+	char	gidc[33];
 };
 
-struct ib_connection {
+struct ib_dest {
 
-	ibv_qp*				recv_qp;
-	ibv_qp*				send_qp;
-	ib_conn_info	conn_info;
+	ibv_qp*		recv_qp;
+	ibv_qp*		send_qp;
+	ib_info*	info;
 		
 };
+
+
+struct ib_connection {
+	ib_dest* 	local;
+	ib_dest*	remote;
+};
+
 
 struct ib_worker {
 	ibv_pd*			pd;
@@ -75,10 +85,10 @@ struct app_context {
 	ibv_xrcd*		xrcd;
 	ibv_srq*		srq;
 	uint32_t 		srq_num;
-	ibv_cq* 			send_cq;
-	ibv_cq* 			recv_cq;	
+	ibv_cq* 		send_cq;
+	ibv_cq* 		recv_cq;	
 	int			 	lid;
-	ibv_gid 		gid;
+	ibv_gid			gid;
 	char*			gidc;
 	int			 	sl;
 	enum ibv_mtu	mtu;
@@ -97,7 +107,7 @@ class RdmaHandler {
 private:
 	app_context* app_ctx;
 
-	std::map<const in_addr_t*, ib_connection*> qp_map;
+	std::map<const in_addr_t*, ib_connection*> conn_map;
 
     std::map <uint64_t,ibv_sge*> sge_map;
     std::vector<ibv_sge*> available_send_sge_vector;
@@ -107,23 +117,24 @@ private:
 
 	void setup_context();
 	void setup_memory();
-	void create_qps(ib_connection*);
-	char* get_local_conn_info(ib_connection* conn);
+	void create_qps(ib_dest*);
+	char* get_local_conn_info(ib_dest* conn);
 	void post_recv();
-	
+	ib_connection* get_ib_connection(const in_addr_t* clientaddr);
+	void set_remote_dest(ib_connection* conn, char* buf); 
 	
     // void handle_rr();
     // void handle_sr();
     // void handle_wc();
 	void cleanup();
-	void print_dest(ib_conn_info*);
+	void print_dest(const char* side, ib_info*);
 
 public:
  	
 	RdmaHandler(char* device);
 	char* get_hello_msg(const in_addr_t* clientaddr, ib_connection* conn);
 	char* get_hello_msg_response(const in_addr_t* clientaddr, char* buf);
-	ib_connection* get_ib_connection(const in_addr_t* clientaddr);
+	
 	void send(const sockaddr_in* client, const char* data, size_t len);
 };
 
@@ -140,31 +151,31 @@ static char* get_gid(const union ibv_gid *gid) {
 
 };
 
-static void wire_gid_to_gid(const char *wgid, union ibv_gid *gid) { 
+// static void wire_gid_to_gid(const char *wgid, union ibv_gid *gid) { 
 
-	char tmp[9];
-	__be32 v32;
-	int i;
-	uint32_t tmp_gid[4];
+// 	char tmp[9];
+// 	__be32 v32;
+// 	int i;
+// 	uint32_t tmp_gid[4];
 
-	for (tmp[8] = 0, i = 0; i < 4; ++i) {
-		memcpy(tmp, wgid + i * 8, 8);
-		sscanf(tmp, "%x", &v32);
-		tmp_gid[i] = be32toh(v32);
-	}
-	memcpy(gid, tmp_gid, sizeof(*gid));
+// 	for (tmp[8] = 0, i = 0; i < 4; ++i) {
+// 		memcpy(tmp, wgid + i * 8, 8);
+// 		sscanf(tmp, "%x", &v32);
+// 		tmp_gid[i] = be32toh(v32);
+// 	}
+// 	memcpy(gid, tmp_gid, sizeof(*gid));
 
-};
+// };
 
-static void gid_to_wire_gid(const union ibv_gid *gid, char wgid[]) {
+// static void gid_to_wire_gid(const union ibv_gid *gid, char wgid[]) {
 
-	uint32_t tmp_gid[4];
-	int i;
+// 	uint32_t tmp_gid[4];
+// 	int i;
 
-	memcpy(tmp_gid, gid, sizeof(tmp_gid));
-	for (i = 0; i < 4; ++i)
-		sprintf(&wgid[i * 8], "%08x", htobe32(tmp_gid[i]));
+// 	memcpy(tmp_gid, gid, sizeof(tmp_gid));
+// 	for (i = 0; i < 4; ++i)
+// 		sprintf(&wgid[i * 8], "%08x", htobe32(tmp_gid[i]));
 
-};
+// };
 #endif
 

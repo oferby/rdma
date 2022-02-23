@@ -9,12 +9,6 @@ RdmaHandler::RdmaHandler(char *devname) {
         app_ctx->devname = devname;
         
         setup_context();
-        // setup_memory();
-        // setup_xrc();
-        // create_qps();
-        // post_recv();
-        // create_queue_pair();
-        // create_local_dest();
 
         
 }
@@ -110,8 +104,6 @@ void RdmaHandler::setup_context() {
     }
 
     app_ctx->gidc = get_gid(&app_ctx->gid);
-
-
 
     puts("Create CQ");
     // ctx.num_clients 
@@ -234,7 +226,7 @@ char* RdmaHandler::get_hello_msg(const in_addr_t* clientaddr, ib_connection* con
     if (conn == nullptr)
         conn = get_ib_connection(clientaddr);
 
-    return get_local_conn_info(conn);
+    return get_local_conn_info(conn->local);
 
 }
 
@@ -243,6 +235,8 @@ char* RdmaHandler::get_hello_msg_response(const in_addr_t* clientaddr, char* buf
     // other side initiate the call  
     
     ib_connection* conn = get_ib_connection(clientaddr);
+
+    set_remote_dest(conn, buf);
     
     return get_hello_msg(clientaddr, conn);
 }
@@ -251,31 +245,54 @@ char* RdmaHandler::get_hello_msg_response(const in_addr_t* clientaddr, char* buf
 ib_connection* RdmaHandler::get_ib_connection(const in_addr_t* clientaddr) {
 
     ib_connection* conn = new ib_connection();
-    qp_map[clientaddr] = conn;
+    conn->local = new ib_dest();
+    conn->local->info = new ib_info();
+    conn->local->info->srqn = app_ctx->srq_num;
+    
+    inet_ntop(AF_INET6, app_ctx->gid.raw, conn->local->info->gidc, sizeof(conn->local->info->gidc));
+
+    conn_map[clientaddr] = conn;
 
     return conn;
 
 }
 
 
-char* RdmaHandler::get_local_conn_info(ib_connection* conn) {
+void RdmaHandler::set_remote_dest(ib_connection* conn, char* buf) {
 
-    create_qps(conn);
+    puts("setting remote IB info");
+
+    ib_dest* remote = new ib_dest();
+    remote->info = new ib_info;
+    conn->remote = remote;
+
+    sscanf(buf, MSG_SSCAN, &remote->info->lid, &remote->info->recv_qpn,
+		&remote->info->send_qpn, &remote->info->send_psn, &remote->info->srqn, remote->info->gidc);
+    const char* s = "remote";
+    print_dest(s, remote->info);
+
+};
+
+
+char* RdmaHandler::get_local_conn_info(ib_dest* dest) {
+
+    create_qps(dest);
 
     char* msg = new char[MSG_SIZE];
-    print_dest(&conn->conn_info);
+    const char* s = "local";
+    print_dest(s, dest->info);
 
-    char gid[33];
-    gid_to_wire_gid(&app_ctx->gid, gid);
-	sprintf(msg, MSG_FORMAT, app_ctx->lid, conn->conn_info.recv_qpn,
-		conn->conn_info.send_qpn, conn->conn_info.recv_psn,
-		app_ctx->srq_num, gid);
+    // gid_to_wire_gid(&dest->info->gid, dest->info->gidc);
+	
+    sprintf(msg, MSG_FORMAT, app_ctx->lid, dest->info->recv_qpn,
+		dest->info->send_qpn, dest->info->recv_psn,
+		dest->info->srqn, dest->info->gidc);
 
     return msg;
 }
 
 
-void RdmaHandler::create_qps(ib_connection* conn) {
+void RdmaHandler::create_qps(ib_dest*  dest ) {
 
     ibv_qp_init_attr_ex init {0};
 	ibv_qp_attr mod;
@@ -287,20 +304,20 @@ void RdmaHandler::create_qps(ib_connection* conn) {
     init.xrcd = app_ctx->xrcd;
 
     
-    conn->recv_qp = ibv_create_qp_ex(app_ctx->ctx, &init);
-    if (!conn->recv_qp)  {
+     dest->recv_qp = ibv_create_qp_ex(app_ctx->ctx, &init);
+    if (!dest->recv_qp)  {
         perror("Couldn't create recv QP");
         exit(EXIT_FAILURE);
     }
 
-    conn->conn_info.recv_qpn = conn->recv_qp->qp_num;
+    dest->info->recv_qpn =  dest->recv_qp->qp_num;
 
     mod.qp_state        = IBV_QPS_INIT;
     mod.pkey_index      = 0;
     mod.port_num        = IB_PORT;
     mod.qp_access_flags = IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_READ;
 
-    if (ibv_modify_qp(conn->recv_qp, &mod,
+    if (ibv_modify_qp( dest ->recv_qp, &mod,
                 IBV_QP_STATE | IBV_QP_PKEY_INDEX |
                 IBV_QP_PORT | IBV_QP_ACCESS_FLAGS)) {
         perror("Failed to modify recv QP to INIT");
@@ -317,20 +334,20 @@ void RdmaHandler::create_qps(ib_connection* conn) {
     init.comp_mask	      = IBV_QP_INIT_ATTR_PD;
     init.pd		          = app_ctx->worker->pd;
 
-    conn->send_qp = ibv_create_qp_ex(app_ctx->ctx, &init);
-    if (!conn->send_qp)  {
+     dest ->send_qp = ibv_create_qp_ex(app_ctx->ctx, &init);
+    if (! dest ->send_qp)  {
         perror("Couldn't create send QP");
         exit(EXIT_FAILURE);
     }
     
-    conn->conn_info.send_qpn = conn->send_qp->qp_num;
+     dest->info->send_qpn =  dest ->send_qp->qp_num;
 
     mod.qp_state        = IBV_QPS_INIT;
     mod.pkey_index      = 0;
     mod.port_num        = IB_PORT;
     mod.qp_access_flags = 0;
 
-    if (ibv_modify_qp(conn->send_qp, &mod,
+    if (ibv_modify_qp( dest ->send_qp, &mod,
                 IBV_QP_STATE | IBV_QP_PKEY_INDEX |
                 IBV_QP_PORT | IBV_QP_ACCESS_FLAGS)) {
         perror("Failed to modify send QP to INIT");
@@ -350,13 +367,11 @@ void RdmaHandler::cleanup() {
 
 };
 
-void RdmaHandler::print_dest(ib_conn_info* info) {
+void RdmaHandler::print_dest(const char* side, ib_info* info) {
 		
-        static char gid[33];
-        inet_ntop(AF_INET6, app_ctx->gid.raw, gid, sizeof(gid));
-
-        printf(ADDR_FORMAT, "local", app_ctx->lid, info->recv_qpn,
+        
+        printf(ADDR_FORMAT, side, app_ctx->lid, info->recv_qpn,
                 info->send_qpn, info->recv_psn,
-                app_ctx->srq_num, app_ctx->gidc);
+                info->srqn, info->gidc);
 
 }

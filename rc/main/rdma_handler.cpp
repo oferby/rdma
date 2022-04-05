@@ -176,7 +176,7 @@ void RdmaHandler::create_queue_pair() {
     init_attr_ex.send_cq = app_ctx->cq;
     init_attr_ex.recv_cq = app_ctx->cq;
     init_attr_ex.srq = app_ctx->srq;
-
+    
     init_attr_ex.cap     = {};
     init_attr_ex.cap.max_send_wr  = MAX_WR;
     init_attr_ex.cap.max_recv_wr  = MAX_WR;

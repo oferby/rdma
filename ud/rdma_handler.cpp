@@ -246,6 +246,17 @@ void RdmaHandler::setup_context(app_context *app_ctx) {
 
     ibv_free_device_list(dev_list);
 
+    app_dest* local_dest = (app_dest*) calloc(1, sizeof local_dest);
+    local_dest->gid = (ibv_gid*) calloc(1, sizeof local_dest->gid);
+
+    status = ibv_query_gid(app_ctx->ctx, IB_PORT, GID_IDX, local_dest->gid);
+    if (status == -1) {
+        perror("could not get GID");
+        exit(EXIT_FAILURE);
+    }
+
+    print_dest(local_dest);
+
     ibv_port_attr port_info = {};
     app_ctx->portinfo = &port_info;
     status = ibv_query_port(app_ctx->ctx, IB_PORT, app_ctx->portinfo);

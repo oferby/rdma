@@ -1,3 +1,4 @@
+//  g++ app.cpp tcp_server.cpp rdma_handler.cpp  -o app -libverbs
 
 #include <stdio.h>
 #include "rdma_handler.h"

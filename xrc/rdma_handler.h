@@ -22,7 +22,6 @@
 #include <fcntl.h>
 
 
-
 #define PORT_NUM 1
 #define QKEY 0x11111111
 #define GID_IDX 1

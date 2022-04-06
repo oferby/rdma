@@ -12,9 +12,9 @@ RdmaHandler::RdmaHandler(char *devname) {
         app_ctx->devname = devname;
         
         setup_context();
-        create_srq();
-        setup_memory();
+        // create_srq();
         create_queue_pair();
+        setup_memory();
         create_local_dest();
 
         
@@ -157,11 +157,17 @@ void RdmaHandler::setup_memory() {
 
         ibv_recv_wr *bad_wr;
 
-        if (ibv_post_srq_recv(app_ctx->srq, &rec_wr, &bad_wr)) {
-            perror("error posting RR in SRQ.");
+        // if (ibv_post_srq_recv(app_ctx->srq, &rec_wr, &bad_wr)) {
+        //     perror("error posting RR in SRQ.");
+        //     cleanup();
+        //     exit(EXIT_FAILURE);    
+        // } 
+
+        if (ibv_post_recv(app_ctx->qp, &rec_wr, &bad_wr)) {
+            perror("error posting RR in QP.");
             cleanup();
             exit(EXIT_FAILURE);    
-        } 
+        }
 
     }
 
@@ -172,10 +178,12 @@ void RdmaHandler::setup_memory() {
 
 void RdmaHandler::create_queue_pair() {
 
+    puts("creating QP");
+
     ibv_qp_init_attr_ex init_attr_ex = {0};
     init_attr_ex.send_cq = app_ctx->cq;
     init_attr_ex.recv_cq = app_ctx->cq;
-    init_attr_ex.srq = app_ctx->srq;
+    // init_attr_ex.srq = app_ctx->srq;
     
     init_attr_ex.cap     = {};
     init_attr_ex.cap.max_send_wr  = MAX_WR;

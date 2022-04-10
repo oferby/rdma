@@ -76,6 +76,8 @@ private:
     std::map <uint64_t,ibv_sge*> sge_map;
     std::vector<ibv_sge*> available_send_sge_vector;
 
+	int num_of_msgs = 0;
+
     int status;
     ibv_wc wc;
 

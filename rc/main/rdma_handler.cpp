@@ -89,23 +89,23 @@ void RdmaHandler::setup_context() {
 
 }
 
-void RdmaHandler::create_srq() {
+// void RdmaHandler::create_srq() {
     
-    ibv_srq_init_attr attr = {
-        .attr = {
-            .max_wr = MAX_WR,
-            .max_sge = MAX_SGE
-        }
-    };
+//     ibv_srq_init_attr attr = {
+//         .attr = {
+//             .max_wr = MAX_WR,
+//             .max_sge = MAX_SGE
+//         }
+//     };
 
-    app_ctx->srq = ibv_create_srq(app_ctx->pd, &attr);
-    if (!app_ctx->srq) {
-        perror("error creating SRQ");
-        exit(EXIT_FAILURE);
-    }    
+//     app_ctx->srq = ibv_create_srq(app_ctx->pd, &attr);
+//     if (!app_ctx->srq) {
+//         perror("error creating SRQ");
+//         exit(EXIT_FAILURE);
+//     }    
 
 
-}
+// }
 
 void RdmaHandler::setup_memory() {
     
@@ -133,7 +133,8 @@ void RdmaHandler::setup_memory() {
     uint64_t mem_addr = reinterpret_cast<uint64_t>(app_ctx->buf);
 
     // SGE for send requests
-    ibv_sge *sge = (ibv_sge*) calloc(1, sizeof sge);
+    // ibv_sge *sge = (ibv_sge*) calloc(1, sizeof sge);
+    ibv_sge *sge = new ibv_sge;
     sge->addr = mem_addr;
     sge->length = 0;
     sge->lkey = app_ctx->mr->lkey;
@@ -141,16 +142,17 @@ void RdmaHandler::setup_memory() {
     this->available_send_sge_vector.push_back(sge);
 
     // SGE for receive requests
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < 5; i++) {
 
         mem_addr += msg_size;
 
-        sge = (ibv_sge*) calloc(1, sizeof sge);
+        // sge = (ibv_sge*) calloc(1, sizeof sge);
+        sge = new ibv_sge;
         sge->addr = mem_addr;
         sge->length = msg_size;
         sge->lkey = app_ctx->mr->lkey;
 
-        ibv_recv_wr rec_wr = {};
+        ibv_recv_wr rec_wr {0};
         rec_wr.wr_id = reinterpret_cast<uint64_t>(sge);
         rec_wr.sg_list = sge;
         rec_wr.num_sge = 1;
@@ -282,11 +284,10 @@ void RdmaHandler::set_dest(app_dest* dest) {
 
     // switch_to_rts();
     
-
     attr.qp_state	    = IBV_QPS_RTS;
-	attr.timeout	    = 14;
-	attr.retry_cnt	    = 7;
-	attr.rnr_retry	    = 7;
+	attr.timeout	    = 15;
+	attr.retry_cnt	    = 3;
+	attr.rnr_retry	    = 7; // infinite
 	attr.sq_psn	    = 0;
 	attr.max_rd_atomic  = 1;
 	
@@ -303,7 +304,7 @@ void RdmaHandler::set_dest(app_dest* dest) {
 	}
 
     puts("QP ready.");
-    printf("port state: %i\n", app_ctx->portinfo->state);
+    printf("port state: %s\n", ibv_port_state_str(app_ctx->portinfo->state));
 
 }
 
@@ -339,7 +340,7 @@ void RdmaHandler::poll_complition() {
                 printf("wid: " PRId64 ", opcode: %i\n", wc.wr_id, wc.opcode);
                 handle_wc();
             } else {
-                puts("got error processing WC.");
+                printf("got error processing WC: %s\n", ibv_wc_status_str(wc.status));
             }
 
         }
@@ -422,7 +423,7 @@ void RdmaHandler::send_to_dest(const char *data, size_t len) {
     send_wr->send_flags = IBV_SEND_SIGNALED ;
 
     ibv_send_wr *bad_wr;
-
+    
     status = ibv_post_send(app_ctx->qp, send_wr, &bad_wr);
     if(status) {
         perror("error posting send request");
